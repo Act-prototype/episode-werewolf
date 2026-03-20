@@ -102,6 +102,15 @@ export const episodeThemes: EpisodeTheme[] = [
   }
 ];
 
+export const SHUFFLE_THEME = "シャッフル";
+
+export function getTopicForTheme(themeName: string): { category: string; topic: string } {
+  if (themeName === SHUFFLE_THEME) {
+    return getRandomTopic();
+  }
+  return getRandomTopicFromTheme(themeName);
+}
+
 export function getRandomTopicFromTheme(themeName: string): { category: string; topic: string } {
   const theme = episodeThemes.find(t => t.category === themeName);
   if (!theme) {

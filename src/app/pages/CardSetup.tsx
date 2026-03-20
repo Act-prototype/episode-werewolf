@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Plus, Minus, Users, Sparkles, ArrowLeft } from "lucide-react";
+import { Plus, Minus, Users, Sparkles, ArrowLeft, Shuffle } from "lucide-react";
 import { Input } from "../components/ui/input";
-import { episodeThemes } from "../utils/episodeThemes";
+import { episodeThemes, SHUFFLE_THEME } from "../utils/episodeThemes";
 
 export default function CardSetup() {
   const navigate = useNavigate();
@@ -209,6 +209,17 @@ export default function CardSetup() {
                 <span className="text-lg font-black text-gray-800">エピソードテーマ</span>
               </div>
               <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  onClick={() => setSelectedTheme(SHUFFLE_THEME)}
+                  className={`p-4 rounded-2xl font-bold text-sm transition-all col-span-2 flex items-center justify-center gap-2 ${
+                    selectedTheme === SHUFFLE_THEME
+                      ? "bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-lg scale-105 ring-2 ring-emerald-500/50"
+                      : "bg-gray-50 text-gray-700 hover:bg-gray-100 active:scale-95"
+                  }`}
+                >
+                  <Shuffle className="w-4 h-4" />
+                  ランダム
+                </button>
                 {episodeThemes.map((theme) => (
                   <button
                     key={theme.category}

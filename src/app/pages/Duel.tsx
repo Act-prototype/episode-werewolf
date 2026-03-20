@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
-import { Home, AlertCircle } from "lucide-react";
+import { Home, AlertCircle, RefreshCw, Sparkles, Loader2 } from "lucide-react";
 import { GameMenu } from "../components/GameMenu";
-import { episodeThemes } from "../utils/episodeThemes";
+import { getTopicForTheme } from "../utils/episodeThemes";
+import { generateAITheme } from "../utils/aiTheme";
 
 interface PlayerState {
   name: string;
@@ -35,7 +36,10 @@ export default function Duel() {
   const [players, setPlayers] = useState<PlayerState[]>([]);
   const [playerCards, setPlayerCards] = useState<("werewolf" | "villager")[][]>([]);
   const [currentTopic, setCurrentTopic] = useState<string>("");
-  const [phase, setPhase] = useState<"cardSelect" | "episode" | "doubt" | "result" | "reveal">("cardSelect");
+  const [currentCategory, setCurrentCategory] = useState<string>("");
+  const [phase, setPhase] = useState<"themeAnnouncement" | "cardSelect" | "episode" | "doubt" | "result" | "reveal">("themeAnnouncement");
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [aiCustomPrompt, setAiCustomPrompt] = useState("");
   const [selectedCards, setSelectedCards] = useState<SelectedCard[]>([]);
   const [currentSelectingPlayer, setCurrentSelectingPlayer] = useState(0);
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
@@ -88,17 +92,37 @@ export default function Duel() {
       }));
       setPlayers(initialPlayers);
 
-      const theme = episodeThemes.find(t => t.category === state.selectedTheme);
-      if (theme) {
-        const randomTopic = theme.topics[Math.floor(Math.random() * theme.topics.length)];
-        setCurrentTopic(randomTopic);
-      }
+      const topic = getTopicForTheme(state.selectedTheme);
+      setCurrentTopic(topic.topic);
+      setCurrentCategory(topic.category);
     } else {
       navigate("/");
     }
   }, [navigate]);
 
   if (!gameState || players.length === 0) return null;
+
+  const handleChangeTopic = () => {
+    if (!gameState) return;
+    const topic = getTopicForTheme(gameState.selectedTheme);
+    setCurrentTopic(topic.topic);
+    setCurrentCategory(topic.category);
+  };
+
+  const handleGenerateAITopic = async () => {
+    if (!gameState || isGeneratingAI) return;
+    setIsGeneratingAI(true);
+    try {
+      const topic = await generateAITheme(gameState.selectedTheme, aiCustomPrompt || undefined);
+      setCurrentTopic(topic.topic);
+      setCurrentCategory(topic.category);
+      setAiCustomPrompt("");
+    } catch (e) {
+      console.error('AI theme generation failed:', e);
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
 
   const handleCardSelect = (index: number) => {
     const cardType = playerCards[currentSelectingPlayer][index];
@@ -258,19 +282,103 @@ export default function Duel() {
     setSelectedCardIndex(null);
     setSelectedCardType(null);
     setShowCardToPlayer(false);
-    setPhase("cardSelect");
+    setPhase("themeAnnouncement");
 
-    const theme = episodeThemes.find(t => t.category === gameState!.selectedTheme);
-    if (theme) {
-      const randomTopic = theme.topics[Math.floor(Math.random() * theme.topics.length)];
-      setCurrentTopic(randomTopic);
-    }
+    const topic = getTopicForTheme(gameState!.selectedTheme);
+    setCurrentTopic(topic.topic);
+    setCurrentCategory(topic.category);
   };
 
   const handleRestart = () => {
     localStorage.removeItem("cardState");
     navigate("/");
   };
+
+  // テーマ発表フェーズ
+  if (phase === "themeAnnouncement") {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="w-full max-w-[420px] min-h-screen bg-white flex flex-col shadow-xl">
+          <div className="bg-gradient-to-br from-blue-600 via-cyan-600 to-teal-600 px-6 py-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-black text-white">カードモード</h1>
+                <p className="text-white/80 text-sm font-bold">Day{gameState.currentRound}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 flex flex-col items-center justify-center p-6 bg-gradient-to-b from-gray-50 to-white space-y-6">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="w-full space-y-6"
+            >
+              <div className="bg-white rounded-3xl shadow-2xl p-8 text-center border border-gray-100">
+                <div className="inline-block bg-purple-600 text-white px-4 py-1.5 rounded-full text-xs font-black mb-4">
+                  TODAY'S THEME
+                </div>
+                {currentCategory && (
+                  <div className="text-gray-500 text-sm font-bold mb-2">{currentCategory}</div>
+                )}
+                <h2 className="text-2xl font-black text-gray-800">
+                  「{currentTopic}」
+                </h2>
+              </div>
+
+              <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+                <p className="text-xs text-blue-900 leading-relaxed font-medium text-center">
+                  このテーマでエピソードを話します<br />
+                  テーマを変えたい場合は下のボタンから
+                </p>
+              </div>
+
+              <button
+                onClick={handleChangeTopic}
+                className="w-full h-11 rounded-xl bg-gray-100 text-gray-600 font-bold text-sm active:scale-95 transition-transform flex items-center justify-center gap-2 hover:bg-gray-200"
+              >
+                <RefreshCw className="w-4 h-4" />
+                テーマを変える
+              </button>
+
+              <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-violet-500" />
+                  <span className="text-sm font-bold text-gray-700">AIでテーマ生成</span>
+                </div>
+                <input
+                  type="text"
+                  value={aiCustomPrompt}
+                  onChange={(e) => setAiCustomPrompt(e.target.value)}
+                  placeholder="例: 食べ物に関するテーマ、もっと面白く"
+                  className="w-full h-10 rounded-xl border-2 border-gray-200 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 bg-gray-50 px-3 text-sm font-medium transition-all outline-none"
+                />
+                <button
+                  onClick={handleGenerateAITopic}
+                  disabled={isGeneratingAI}
+                  className="w-full h-11 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white font-bold text-sm active:scale-95 transition-transform flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                  {isGeneratingAI ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4" />
+                  )}
+                  {isGeneratingAI ? "生成中..." : "AIで生成"}
+                </button>
+              </div>
+
+              <button
+                onClick={() => setPhase("cardSelect")}
+                className="w-full h-16 rounded-2xl bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 text-white font-black text-lg shadow-2xl active:scale-95 transition-all"
+              >
+                このテーマで始める
+              </button>
+            </motion.div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // カード選択フェーズ
   if (phase === "cardSelect") {
@@ -338,10 +446,12 @@ export default function Duel() {
                     </div>
                   </div>
 
-                  <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 border-2 border-amber-200">
+                  <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-4 border-2 border-amber-200">
                     <div className="text-center">
-                      <div className="text-amber-900 text-sm font-bold mb-2">今回のトピック</div>
-                      <div className="text-xl font-black text-amber-900">{currentTopic}</div>
+                      {currentCategory && (
+                        <div className="text-amber-700 text-xs font-bold mb-1">{currentCategory}</div>
+                      )}
+                      <div className="text-base font-black text-amber-900">{currentTopic}</div>
                     </div>
                   </div>
 

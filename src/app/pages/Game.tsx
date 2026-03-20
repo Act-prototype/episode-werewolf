@@ -12,7 +12,9 @@ import {
 } from "lucide-react";
 import { GameState } from "../types/game";
 import { checkGameOver, eliminatePlayer } from "../utils/gameLogic";
-import { getRandomTopicFromTheme } from "../utils/episodeThemes";
+import { getTopicForTheme } from "../utils/episodeThemes";
+import { generateAITheme } from "../utils/aiTheme";
+import { RefreshCw, Sparkles, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { GameMenu } from "../components/GameMenu";
 
@@ -25,6 +27,8 @@ export default function Game() {
   const [skipExile, setSkipExile] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(180);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [aiCustomPrompt, setAiCustomPrompt] = useState("");
 
   useEffect(() => {
     const savedState = localStorage.getItem("gameState");
@@ -33,7 +37,7 @@ export default function Game() {
       setGameState(state);
 
       if (!state.currentTopic && state.currentPhase === "episodeAnnouncement") {
-        const topic = getRandomTopicFromTheme(state.selectedTheme);
+        const topic = getTopicForTheme(state.selectedTheme);
         state.currentTopic = topic;
         localStorage.setItem("gameState", JSON.stringify(state));
         setGameState({ ...state });
@@ -122,7 +126,7 @@ export default function Game() {
           newState.currentPhase = "gameOver";
         } else {
           newState.currentDay += 1;
-          newState.currentTopic = getRandomTopicFromTheme(newState.selectedTheme);
+          newState.currentTopic = getTopicForTheme(newState.selectedTheme);
           newState.currentPhase = "episodeAnnouncement";
         }
         newState.eliminatedTonight = null;
@@ -140,6 +144,28 @@ export default function Game() {
         return [...prev, playerId];
       }
     });
+  };
+
+  const handleChangeTopic = () => {
+    if (!gameState) return;
+    const newTopic = getTopicForTheme(gameState.selectedTheme);
+    const newState = { ...gameState, currentTopic: newTopic };
+    updateGameState(newState);
+  };
+
+  const handleGenerateAITopic = async () => {
+    if (!gameState || isGeneratingAI) return;
+    setIsGeneratingAI(true);
+    try {
+      const topic = await generateAITheme(gameState.selectedTheme, aiCustomPrompt || undefined);
+      const newState = { ...gameState, currentTopic: topic };
+      updateGameState(newState);
+      setAiCustomPrompt("");
+    } catch (e) {
+      console.error('AI theme generation failed:', e);
+    } finally {
+      setIsGeneratingAI(false);
+    }
   };
 
   const handleRestart = () => {
@@ -284,6 +310,40 @@ export default function Game() {
                 このテーマでエピソードを話そう<br />
                 🐺 人狼=嘘 / 👤 村人=真実
               </p>
+            </div>
+
+            <button
+              onClick={handleChangeTopic}
+              className="w-full h-11 rounded-xl bg-gray-100 text-gray-600 font-bold text-sm active:scale-95 transition-transform flex items-center justify-center gap-2 hover:bg-gray-200"
+            >
+              <RefreshCw className="w-4 h-4" />
+              テーマを変える
+            </button>
+
+            <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100 space-y-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-violet-500" />
+                <span className="text-sm font-bold text-gray-700">AIでテーマ生成</span>
+              </div>
+              <input
+                type="text"
+                value={aiCustomPrompt}
+                onChange={(e) => setAiCustomPrompt(e.target.value)}
+                placeholder="例: 食べ物に関するテーマ、もっと面白く"
+                className="w-full h-10 rounded-xl border-2 border-gray-200 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 bg-gray-50 px-3 text-sm font-medium transition-all outline-none"
+              />
+              <button
+                onClick={handleGenerateAITopic}
+                disabled={isGeneratingAI}
+                className="w-full h-11 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white font-bold text-sm active:scale-95 transition-transform flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                {isGeneratingAI ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4" />
+                )}
+                {isGeneratingAI ? "生成中..." : "AIで生成"}
+              </button>
             </div>
 
             <button
