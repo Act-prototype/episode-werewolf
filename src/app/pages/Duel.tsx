@@ -40,6 +40,7 @@ export default function Duel() {
   const [phase, setPhase] = useState<"themeAnnouncement" | "cardSelect" | "episode" | "doubt" | "result" | "reveal">("themeAnnouncement");
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [aiCustomPrompt, setAiCustomPrompt] = useState("");
+  const [showAIPanel, setShowAIPanel] = useState(false);
   const [selectedCards, setSelectedCards] = useState<SelectedCard[]>([]);
   const [currentSelectingPlayer, setCurrentSelectingPlayer] = useState(0);
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
@@ -299,23 +300,24 @@ export default function Duel() {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="w-full max-w-[420px] min-h-screen bg-white flex flex-col shadow-xl">
-          <div className="bg-gradient-to-br from-blue-600 via-cyan-600 to-teal-600 px-6 py-5">
+          <div className="bg-gray-900 px-6 py-5">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-black text-white">カードモード</h1>
                 <p className="text-white/80 text-sm font-bold">Day{gameState.currentRound}</p>
               </div>
+              <GameMenu mode="card" />
             </div>
           </div>
 
-          <div className="flex-1 flex flex-col items-center justify-center p-6 bg-gradient-to-b from-gray-50 to-white space-y-6">
+          <div className="flex-1 flex flex-col items-center justify-center p-6 bg-gray-50 space-y-6">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               className="w-full space-y-6"
             >
-              <div className="bg-white rounded-3xl shadow-2xl p-8 text-center border border-gray-100">
-                <div className="inline-block bg-purple-600 text-white px-4 py-1.5 rounded-full text-xs font-black mb-4">
+              <div className="bg-white rounded-3xl shadow-2xl p-8 text-center border border-gray-200">
+                <div className="inline-block bg-gray-900 text-white px-4 py-1.5 rounded-full text-xs font-black mb-4">
                   TODAY'S THEME
                 </div>
                 {currentCategory && (
@@ -326,50 +328,57 @@ export default function Duel() {
                 </h2>
               </div>
 
-              <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-                <p className="text-xs text-blue-900 leading-relaxed font-medium text-center">
+              <div className="bg-gray-100 rounded-xl p-4 border border-gray-200">
+                <p className="text-xs text-gray-600 leading-relaxed font-medium text-center">
                   このテーマでエピソードを話します<br />
                   テーマを変えたい場合は下のボタンから
                 </p>
               </div>
 
-              <button
-                onClick={handleChangeTopic}
-                className="w-full h-11 rounded-xl bg-gray-100 text-gray-600 font-bold text-sm active:scale-95 transition-transform flex items-center justify-center gap-2 hover:bg-gray-200"
-              >
-                <RefreshCw className="w-4 h-4" />
-                テーマを変える
-              </button>
-
-              <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100 space-y-3">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-violet-500" />
-                  <span className="text-sm font-bold text-gray-700">AIでテーマ生成</span>
-                </div>
-                <input
-                  type="text"
-                  value={aiCustomPrompt}
-                  onChange={(e) => setAiCustomPrompt(e.target.value)}
-                  placeholder="例: 食べ物に関するテーマ、もっと面白く"
-                  className="w-full h-10 rounded-xl border-2 border-gray-200 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 bg-gray-50 px-3 text-sm font-medium transition-all outline-none"
-                />
+              <div className="flex gap-2">
                 <button
-                  onClick={handleGenerateAITopic}
-                  disabled={isGeneratingAI}
-                  className="w-full h-11 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white font-bold text-sm active:scale-95 transition-transform flex items-center justify-center gap-2 disabled:opacity-60"
+                  onClick={handleChangeTopic}
+                  className="flex-1 h-11 rounded-xl bg-gray-200 text-gray-600 font-bold text-sm active:scale-95 transition-transform flex items-center justify-center gap-2 hover:bg-gray-300"
                 >
-                  {isGeneratingAI ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Sparkles className="w-4 h-4" />
-                  )}
-                  {isGeneratingAI ? "生成中..." : "AIで生成"}
+                  <RefreshCw className="w-4 h-4" />
+                  テーマを変える
+                </button>
+                <button
+                  onClick={() => setShowAIPanel(!showAIPanel)}
+                  className="flex-1 h-11 rounded-xl bg-violet-100 text-violet-700 font-bold text-sm active:scale-95 transition-transform flex items-center justify-center gap-2 hover:bg-violet-200"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  AIで生成
                 </button>
               </div>
 
+              {showAIPanel && (
+                <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-200 space-y-3">
+                  <input
+                    type="text"
+                    value={aiCustomPrompt}
+                    onChange={(e) => setAiCustomPrompt(e.target.value)}
+                    placeholder="例: 食べ物に関するテーマ、もっと面白く"
+                    className="w-full h-10 rounded-xl border-2 border-gray-200 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/20 bg-gray-50 px-3 text-sm font-medium transition-all outline-none"
+                  />
+                  <button
+                    onClick={handleGenerateAITopic}
+                    disabled={isGeneratingAI}
+                    className="w-full h-11 rounded-xl bg-gray-900 text-white font-bold text-sm active:scale-95 transition-transform flex items-center justify-center gap-2 disabled:opacity-60"
+                  >
+                    {isGeneratingAI ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-4 h-4" />
+                    )}
+                    {isGeneratingAI ? "生成中..." : "AIで生成"}
+                  </button>
+                </div>
+              )}
+
               <button
                 onClick={() => setPhase("cardSelect")}
-                className="w-full h-16 rounded-2xl bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 text-white font-black text-lg shadow-2xl active:scale-95 transition-all"
+                className="w-full h-16 rounded-2xl bg-gray-900 text-white font-black text-lg shadow-2xl active:scale-95 transition-all"
               >
                 このテーマで始める
               </button>
@@ -389,14 +398,17 @@ export default function Duel() {
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="w-full max-w-[420px] min-h-screen bg-white flex flex-col shadow-xl">
           {/* ヘッダー */}
-          <div className="bg-gradient-to-br from-blue-600 via-cyan-600 to-teal-600 px-6 py-5">
+          <div className="bg-gray-900 px-6 py-5">
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h1 className="text-2xl font-black text-white">カードモード</h1>
                 <p className="text-white/80 text-sm font-bold">Day{gameState.currentRound}</p>
               </div>
-              <div className="text-white text-xs font-bold">
-                {selectedCards.length}/{players.filter(p => p.cards > 0).length} 選択完了
+              <div className="flex items-center gap-3">
+                <div className="text-white text-xs font-bold">
+                  {selectedCards.length}/{players.filter(p => p.cards > 0).length} 選択完了
+                </div>
+                <GameMenu mode="card" />
               </div>
             </div>
 
@@ -425,7 +437,7 @@ export default function Duel() {
           </div>
 
           {/* メインコンテンツ */}
-          <div className="flex-1 flex flex-col items-center justify-center p-6 bg-gradient-to-b from-gray-50 to-white">
+          <div className="flex-1 flex flex-col items-center justify-center p-6 bg-gray-50">
             <AnimatePresence mode="wait">
               {!showCardToPlayer ? (
                 <motion.div
@@ -435,8 +447,8 @@ export default function Duel() {
                   exit={{ opacity: 0, scale: 0.9 }}
                   className="w-full space-y-6"
                 >
-                  <div className="bg-white rounded-3xl shadow-2xl p-8 text-center border border-gray-100">
-                    <div className="w-24 h-24 mx-auto bg-gradient-to-br from-blue-600 to-cyan-600 rounded-full flex items-center justify-center mb-4 shadow-xl">
+                  <div className="bg-white rounded-3xl shadow-2xl p-8 text-center border border-gray-200">
+                    <div className="w-24 h-24 mx-auto bg-gray-900 rounded-full flex items-center justify-center mb-4 shadow-xl">
                       <span className="text-5xl">👤</span>
                     </div>
                     <h2 className="text-4xl font-black text-gray-800 mb-2">{currentPlayerState.name}</h2>
@@ -446,12 +458,12 @@ export default function Duel() {
                     </div>
                   </div>
 
-                  <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-4 border-2 border-amber-200">
+                  <div className="bg-gray-100 rounded-2xl p-4 border border-gray-200">
                     <div className="text-center">
                       {currentCategory && (
-                        <div className="text-amber-700 text-xs font-bold mb-1">{currentCategory}</div>
+                        <div className="text-gray-500 text-xs font-bold mb-1">{currentCategory}</div>
                       )}
-                      <div className="text-base font-black text-amber-900">{currentTopic}</div>
+                      <div className="text-base font-black text-gray-800">{currentTopic}</div>
                     </div>
                   </div>
 
@@ -462,7 +474,7 @@ export default function Duel() {
                         <button
                           key={index}
                           onClick={() => handleCardSelect(index)}
-                          className="aspect-[2/3] rounded-2xl shadow-xl active:scale-95 transition-all bg-gradient-to-br from-gray-700 to-gray-900 hover:shadow-2xl"
+                          className="aspect-[2/3] rounded-2xl shadow-xl active:scale-95 transition-all bg-gray-800 hover:shadow-2xl"
                         >
                           <div className="w-full h-full flex items-center justify-center">
                             <span className="text-white text-5xl">🃏</span>
@@ -497,8 +509,8 @@ export default function Duel() {
                     </div>
                   </div>
 
-                  <div className="bg-amber-50 rounded-2xl p-5 border-2 border-amber-200">
-                    <p className="text-sm text-amber-900 text-center font-bold leading-relaxed">
+                  <div className="bg-gray-100 rounded-2xl p-5 border border-gray-200">
+                    <p className="text-sm text-gray-600 text-center font-bold leading-relaxed">
                       このカードを覚えておいてください。<br />
                       全員がカードを選んだら、順番にエピソードを話します。
                     </p>
@@ -506,7 +518,7 @@ export default function Duel() {
 
                   <button
                     onClick={handleConfirmCard}
-                    className="w-full h-16 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-black text-lg shadow-2xl active:scale-95 transition-all"
+                    className="w-full h-16 rounded-2xl bg-gray-900 text-white font-black text-lg shadow-2xl active:scale-95 transition-all"
                   >
                     次のプレイヤーへ
                   </button>
@@ -527,22 +539,25 @@ export default function Duel() {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="w-full max-w-[420px] min-h-screen bg-white flex flex-col shadow-xl">
-          <div className="bg-gradient-to-br from-purple-600 via-violet-600 to-fuchsia-600 px-6 py-5">
-            <div className="text-center">
-              <h1 className="text-2xl font-black text-white">エピソード発表</h1>
-              <p className="text-white/80 text-sm font-bold">
-                {currentIndex + 1} / {selectedCards.length}
-              </p>
+          <div className="bg-gray-900 px-6 py-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-black text-white">エピソード発表</h1>
+                <p className="text-white/80 text-sm font-bold">
+                  {currentIndex + 1} / {selectedCards.length}
+                </p>
+              </div>
+              <GameMenu mode="card" />
             </div>
           </div>
 
-          <div className="flex-1 flex flex-col items-center justify-center p-6 bg-gradient-to-b from-gray-50 to-white space-y-6">
+          <div className="flex-1 flex flex-col items-center justify-center p-6 bg-gray-50 space-y-6">
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="bg-white rounded-3xl shadow-2xl p-8 text-center border border-gray-100 w-full"
+              className="bg-white rounded-3xl shadow-2xl p-8 text-center border border-gray-200 w-full"
             >
-              <div className="w-24 h-24 mx-auto bg-gradient-to-br from-purple-600 to-fuchsia-600 rounded-full flex items-center justify-center mb-4 shadow-xl">
+              <div className="w-24 h-24 mx-auto bg-gray-900 rounded-full flex items-center justify-center mb-4 shadow-xl">
                 <span className="text-5xl">🎭</span>
               </div>
               <h2 className="text-4xl font-black text-gray-800 mb-2">
@@ -551,15 +566,15 @@ export default function Duel() {
               <p className="text-gray-600 font-bold">がエピソードを話します</p>
             </motion.div>
 
-            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 border-2 border-amber-200 w-full">
+            <div className="bg-gray-100 rounded-2xl p-6 border border-gray-200 w-full">
               <div className="text-center">
-                <div className="text-amber-900 text-sm font-bold mb-2">トピック</div>
-                <div className="text-xl font-black text-amber-900">{currentTopic}</div>
+                <div className="text-gray-500 text-sm font-bold mb-2">トピック</div>
+                <div className="text-xl font-black text-gray-800">{currentTopic}</div>
               </div>
             </div>
 
-            <div className="bg-blue-50 rounded-2xl p-5 border-2 border-blue-200 w-full">
-              <p className="text-sm text-blue-900 text-center font-bold leading-relaxed">
+            <div className="bg-gray-100 rounded-2xl p-5 border border-gray-200 w-full">
+              <p className="text-sm text-gray-600 text-center font-bold leading-relaxed">
                 {players[currentEpisodePlayer].name}さん、選んだカードに従って<br />
                 エピソードを話してください。
               </p>
@@ -567,7 +582,7 @@ export default function Duel() {
 
             <button
               onClick={handleNextEpisode}
-              className="w-full h-16 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-black text-lg shadow-2xl active:scale-95 transition-all"
+              className="w-full h-16 rounded-2xl bg-gray-900 text-white font-black text-lg shadow-2xl active:scale-95 transition-all"
             >
               {isLast ? "ダウトタイムへ進む" : "次のプレイヤーへ"}
             </button>
@@ -584,14 +599,17 @@ export default function Duel() {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="w-full max-w-[420px] min-h-screen bg-white flex flex-col shadow-xl">
-          <div className="bg-gradient-to-br from-orange-600 via-red-600 to-rose-600 px-6 py-5">
+          <div className="bg-gray-900 px-6 py-5">
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h1 className="text-2xl font-black text-white">ダウトタイム</h1>
                 <p className="text-white/80 text-sm font-bold">誰かをダウトしますか？</p>
               </div>
-              <div className="text-white text-xs font-bold">
-                {currentDoubtingPlayer + 1}/{players.filter(p => p.cards > 0).length}
+              <div className="flex items-center gap-3">
+                <div className="text-white text-xs font-bold">
+                  {currentDoubtingPlayer + 1}/{players.filter(p => p.cards > 0).length}
+                </div>
+                <GameMenu mode="card" />
               </div>
             </div>
 
@@ -618,23 +636,23 @@ export default function Duel() {
             </div>
           </div>
 
-          <div className="flex-1 flex flex-col items-center justify-center p-6 bg-gradient-to-b from-gray-50 to-white space-y-6">
+          <div className="flex-1 flex flex-col items-center justify-center p-6 bg-gray-50 space-y-6">
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="bg-white rounded-3xl shadow-2xl p-8 text-center border border-gray-100 w-full"
+              className="bg-white rounded-3xl shadow-2xl p-8 text-center border border-gray-200 w-full"
             >
-              <div className="w-24 h-24 mx-auto bg-gradient-to-br from-orange-600 to-red-600 rounded-full flex items-center justify-center mb-4 shadow-xl">
+              <div className="w-24 h-24 mx-auto bg-gray-900 rounded-full flex items-center justify-center mb-4 shadow-xl">
                 <span className="text-5xl">🤔</span>
               </div>
               <h2 className="text-4xl font-black text-gray-800 mb-2">{currentDoubter.name}</h2>
               <p className="text-gray-600 font-bold">誰をダウトしますか？</p>
             </motion.div>
 
-            <div className="bg-gradient-to-br from-red-50 to-rose-50 rounded-2xl p-5 border-2 border-red-200 w-full">
+            <div className="bg-gray-100 rounded-2xl p-5 border border-gray-200 w-full">
               <div className="flex items-start gap-3">
-                <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-red-900 font-bold leading-relaxed">
+                <AlertCircle className="w-6 h-6 text-gray-600 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-gray-700 font-bold leading-relaxed">
                   <p className="mb-2">誰かのエピソードが人狼カード（嘘）だと思いますか？</p>
                   <p className="text-xs">
                     • ダウト成功 → 出した人にカード+1枚<br />
@@ -654,7 +672,7 @@ export default function Duel() {
                   <button
                     key={idx}
                     onClick={() => handleDoubtFromPlayer(sc.playerIndex)}
-                    className="w-full h-14 rounded-2xl bg-gradient-to-r from-red-500 to-rose-500 text-white font-bold text-lg shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+                    className="w-full h-14 rounded-2xl bg-red-600 text-white font-bold text-lg shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
                   >
                     🎯 {players[sc.playerIndex].name} をダウト！
                   </button>
@@ -663,7 +681,7 @@ export default function Duel() {
 
               <button
                 onClick={handlePassFromPlayer}
-                className="w-full h-14 rounded-2xl bg-gradient-to-r from-gray-600 to-gray-700 text-white font-black text-lg shadow-xl active:scale-95 transition-all mt-2"
+                className="w-full h-14 rounded-2xl bg-gray-800 text-white font-black text-lg shadow-xl active:scale-95 transition-all mt-2"
               >
                 ✓ パス（信じる）
               </button>
@@ -680,14 +698,17 @@ export default function Duel() {
       return (
         <div className="min-h-screen bg-white flex items-center justify-center">
           <div className="w-full max-w-[420px] min-h-screen bg-white flex flex-col shadow-xl">
-            <div className="bg-gradient-to-br from-blue-600 via-cyan-600 to-teal-600 px-6 py-5">
-              <div className="text-center">
-                <h1 className="text-2xl font-black text-white">カード公開</h1>
-                <p className="text-white/80 text-sm font-bold">全員パス</p>
+            <div className="bg-gray-900 px-6 py-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-black text-white">カード公開</h1>
+                  <p className="text-white/80 text-sm font-bold">全員パス</p>
+                </div>
+                <GameMenu mode="card" />
               </div>
             </div>
 
-            <div className="flex-1 flex flex-col items-center justify-center p-6 bg-gradient-to-b from-gray-50 to-white space-y-4">
+            <div className="flex-1 flex flex-col items-center justify-center p-6 bg-gray-50 space-y-4">
               <h2 className="text-xl font-black text-gray-800 mb-2">今回出したカード</h2>
               <div className="w-full space-y-3">
                 {selectedCards.map((sc, idx) => (
@@ -698,8 +719,8 @@ export default function Duel() {
                     transition={{ delay: idx * 0.2 }}
                     className={`rounded-2xl shadow-lg p-5 ${
                       sc.cardType === "werewolf"
-                        ? "bg-gradient-to-br from-red-500 to-rose-500"
-                        : "bg-gradient-to-br from-blue-500 to-cyan-500"
+                        ? "bg-red-600"
+                        : "bg-gray-800"
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -721,7 +742,7 @@ export default function Duel() {
 
               <button
                 onClick={() => processRoundEnd(players, playerCards, -1)}
-                className="w-full h-16 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-black text-lg shadow-2xl active:scale-95 transition-all mt-6"
+                className="w-full h-16 rounded-2xl bg-gray-900 text-white font-black text-lg shadow-2xl active:scale-95 transition-all mt-6"
               >
                 次のラウンドへ
               </button>
@@ -738,20 +759,19 @@ export default function Duel() {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="w-full max-w-[420px] min-h-screen bg-white flex flex-col shadow-xl">
-          <div className={`px-6 py-5 ${
-            doubtResult?.isSuccess
-              ? "bg-gradient-to-br from-green-600 via-emerald-600 to-teal-600"
-              : "bg-gradient-to-br from-orange-600 via-red-600 to-rose-600"
-          }`}>
-            <div className="text-center">
-              <h1 className="text-2xl font-black text-white">カード公開</h1>
-              <p className="text-white/80 text-sm font-bold">
-                {doubterPlayer.name} が {targetPlayer.name} をダウト！
-              </p>
+          <div className="bg-gray-900 px-6 py-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-black text-white">カード公開</h1>
+                <p className="text-white/80 text-sm font-bold">
+                  {doubterPlayer.name} が {targetPlayer.name} をダウト！
+                </p>
+              </div>
+              <GameMenu mode="card" />
             </div>
           </div>
 
-          <div className="flex-1 flex flex-col items-center justify-center p-6 bg-gradient-to-b from-gray-50 to-white space-y-6">
+          <div className="flex-1 flex flex-col items-center justify-center p-6 bg-gray-50 space-y-6">
             <motion.div
               initial={{ scale: 0.8, opacity: 0, rotateY: 180 }}
               animate={{ scale: 1, opacity: 1, rotateY: 0 }}
@@ -809,7 +829,7 @@ export default function Duel() {
                   className={`rounded-xl shadow p-3 ${
                     sc.cardType === "werewolf"
                       ? "bg-red-100 border-2 border-red-300"
-                      : "bg-blue-100 border-2 border-blue-300"
+                      : "bg-gray-100 border-2 border-gray-300"
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -818,13 +838,13 @@ export default function Duel() {
                         {sc.cardType === "werewolf" ? "🐺" : "👤"}
                       </div>
                       <div className={`font-bold text-sm ${
-                        sc.cardType === "werewolf" ? "text-red-900" : "text-blue-900"
+                        sc.cardType === "werewolf" ? "text-red-900" : "text-gray-900"
                       }`}>
                         {players[sc.playerIndex].name}
                       </div>
                     </div>
                     <div className={`text-xs font-bold ${
-                      sc.cardType === "werewolf" ? "text-red-700" : "text-blue-700"
+                      sc.cardType === "werewolf" ? "text-red-700" : "text-gray-700"
                     }`}>
                       {sc.cardType === "werewolf" ? "人狼" : "村人"}
                     </div>
@@ -849,7 +869,7 @@ export default function Duel() {
                   processRoundEnd(newPlayers, newPlayerCards, -1);
                 }
               }}
-              className="w-full h-16 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-black text-lg shadow-2xl active:scale-95 transition-all"
+              className="w-full h-16 rounded-2xl bg-gray-900 text-white font-black text-lg shadow-2xl active:scale-95 transition-all"
             >
               次のラウンドへ
             </button>
@@ -864,26 +884,29 @@ export default function Duel() {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="w-full max-w-[420px] min-h-screen bg-white flex flex-col shadow-xl">
-          <div className="bg-gradient-to-br from-yellow-500 via-amber-500 to-orange-500 px-6 py-10">
+          <div className="bg-gray-900 px-6 py-10">
+            <div className="flex justify-end mb-4">
+              <GameMenu mode="card" showRules={false} />
+            </div>
             <div className="text-center">
               <div className="text-7xl mb-4">🏆</div>
               <h1 className="text-4xl font-black text-white mb-2">ゲーム終了！</h1>
             </div>
           </div>
 
-          <div className="flex-1 flex flex-col items-center justify-center p-6 bg-gradient-to-b from-gray-50 to-white space-y-6">
+          <div className="flex-1 flex flex-col items-center justify-center p-6 bg-gray-50 space-y-6">
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.5 }}
-              className="bg-white rounded-3xl shadow-2xl p-10 text-center border-4 border-yellow-400 w-full"
+              className="bg-white rounded-3xl shadow-2xl p-10 text-center border-4 border-gray-300 w-full"
             >
               <div className="text-8xl mb-6">🎉</div>
               <div className="text-5xl font-black text-gray-800 mb-4">{gameState.winner}</div>
               <div className="text-2xl font-bold text-gray-600">の勝利！</div>
             </motion.div>
 
-            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 w-full">
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200 w-full">
               <div className="text-center mb-4">
                 <h3 className="text-lg font-black text-gray-800">ゲーム統計</h3>
               </div>
@@ -908,7 +931,7 @@ export default function Duel() {
             <div className="w-full space-y-3">
               <button
                 onClick={handleRestart}
-                className="w-full h-16 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-black text-xl shadow-2xl active:scale-95 transition-all"
+                className="w-full h-16 rounded-2xl bg-gray-900 text-white font-black text-xl shadow-2xl active:scale-95 transition-all"
               >
                 トップに戻る
               </button>

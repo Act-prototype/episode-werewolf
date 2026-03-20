@@ -29,6 +29,7 @@ export default function Game() {
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [aiCustomPrompt, setAiCustomPrompt] = useState("");
+  const [showAIPanel, setShowAIPanel] = useState(false);
 
   useEffect(() => {
     const savedState = localStorage.getItem("gameState");
@@ -181,10 +182,10 @@ export default function Game() {
     <div className="min-h-screen bg-white flex items-center justify-center">
       <div className="w-full max-w-[420px] min-h-screen bg-white flex flex-col shadow-xl">
       {/* ヘッダー */}
-      <div className="bg-white/80 backdrop-blur-xl border-b border-gray-200 sticky top-0 z-10">
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 rounded-2xl flex items-center justify-center shadow-lg">
+            <div className="w-12 h-12 bg-gray-900 rounded-2xl flex items-center justify-center shadow-lg">
               <span className="text-2xl">🐺</span>
             </div>
             <div>
@@ -195,7 +196,7 @@ export default function Game() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-2.5 rounded-full shadow-lg">
+            <div className="bg-gray-900 text-white px-5 py-2.5 rounded-full shadow-lg">
               <span className="text-white font-black text-base">Day{gameState.currentDay}</span>
             </div>
             <GameMenu mode="normal" />
@@ -204,7 +205,7 @@ export default function Game() {
       </div>
 
       {/* メインコンテンツ */}
-      <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4 bg-gradient-to-b from-gray-50 to-white">
+      <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4 bg-gray-50">
         {/* ゲームオーバー */}
         {gameState.currentPhase === "gameOver" && (
           <motion.div
@@ -212,7 +213,7 @@ export default function Game() {
             animate={{ opacity: 1, scale: 1 }}
             className="space-y-4"
           >
-            <div className="bg-white rounded-3xl shadow-xl p-10 text-center border border-gray-100">
+            <div className="bg-white rounded-3xl shadow-xl p-10 text-center border border-gray-200">
               <div className="text-9xl mb-6">
                 {gameState.winner === "人狼" ? "🐺" : "👥"}
               </div>
@@ -226,7 +227,7 @@ export default function Game() {
               </p>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-lg p-5 border border-gray-100">
+            <div className="bg-white rounded-2xl shadow-lg p-5 border border-gray-200">
               <h3 className="text-lg font-black text-gray-800 mb-4 text-center">
                 プレイヤー結果
               </h3>
@@ -257,7 +258,7 @@ export default function Game() {
 
             <button
               onClick={handleRestart}
-              className="w-full h-14 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-base shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2"
+              className="w-full h-14 rounded-xl bg-gray-900 text-white font-bold text-base shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2"
             >
               <Home className="w-5 h-5" />
               新しいゲームを始める
@@ -272,19 +273,19 @@ export default function Game() {
             animate={{ opacity: 1, y: 0 }}
             className="space-y-4"
           >
-            <div className="bg-gradient-to-br from-orange-400 to-yellow-400 rounded-3xl shadow-xl p-6 border border-orange-300">
+            <div className="bg-gray-900 rounded-3xl shadow-xl p-6">
               <div className="flex items-center gap-3 mb-5">
-                <div className="w-12 h-12 bg-white/40 rounded-2xl flex items-center justify-center shadow-md">
+                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center shadow-md">
                   <Sun className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black text-white">Day{gameState.currentDay}の朝</h2>
-                  <p className="text-white/90 text-xs font-bold">MORNING</p>
+                  <h2 className="text-2xl font-black text-white">Day{gameState.currentDay}</h2>
+                  <p className="text-white/90 text-xs font-bold">エピソードテーマ発表</p>
                 </div>
               </div>
 
               {gameState.eliminatedTonight !== null && (
-                <div className="bg-red-500/40 backdrop-blur-sm rounded-2xl p-4 border-2 border-white/50 mb-4">
+                <div className="bg-red-500/30 rounded-2xl p-4 border-2 border-white/30 mb-4">
                   <p className="text-white text-center font-bold text-sm">
                     💀 {gameState.players[gameState.eliminatedTonight].name}さんが<br />
                     人狼に襲われました
@@ -293,7 +294,7 @@ export default function Game() {
               )}
 
               <div className="bg-white rounded-2xl p-5 text-center shadow-lg">
-                <div className="inline-block bg-purple-600 text-white px-3 py-1 rounded-full text-xs font-black mb-3">
+                <div className="inline-block bg-gray-900 text-white px-3 py-1 rounded-full text-xs font-black mb-3">
                   TODAY'S THEME
                 </div>
                 <h3 className="text-xl font-black text-gray-800 mb-2">
@@ -305,50 +306,57 @@ export default function Game() {
               </div>
             </div>
 
-            <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-              <p className="text-xs text-blue-900 leading-relaxed font-medium text-center">
+            <div className="bg-gray-100 rounded-xl p-4 border border-gray-200">
+              <p className="text-xs text-gray-600 leading-relaxed font-medium text-center">
                 このテーマでエピソードを話そう<br />
                 🐺 人狼=嘘 / 👤 村人=真実
               </p>
             </div>
 
-            <button
-              onClick={handleChangeTopic}
-              className="w-full h-11 rounded-xl bg-gray-100 text-gray-600 font-bold text-sm active:scale-95 transition-transform flex items-center justify-center gap-2 hover:bg-gray-200"
-            >
-              <RefreshCw className="w-4 h-4" />
-              テーマを変える
-            </button>
-
-            <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100 space-y-3">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-violet-500" />
-                <span className="text-sm font-bold text-gray-700">AIでテーマ生成</span>
-              </div>
-              <input
-                type="text"
-                value={aiCustomPrompt}
-                onChange={(e) => setAiCustomPrompt(e.target.value)}
-                placeholder="例: 食べ物に関するテーマ、もっと面白く"
-                className="w-full h-10 rounded-xl border-2 border-gray-200 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 bg-gray-50 px-3 text-sm font-medium transition-all outline-none"
-              />
+            <div className="flex gap-2">
               <button
-                onClick={handleGenerateAITopic}
-                disabled={isGeneratingAI}
-                className="w-full h-11 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white font-bold text-sm active:scale-95 transition-transform flex items-center justify-center gap-2 disabled:opacity-60"
+                onClick={handleChangeTopic}
+                className="flex-1 h-11 rounded-xl bg-gray-200 text-gray-600 font-bold text-sm active:scale-95 transition-transform flex items-center justify-center gap-2 hover:bg-gray-300"
               >
-                {isGeneratingAI ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Sparkles className="w-4 h-4" />
-                )}
-                {isGeneratingAI ? "生成中..." : "AIで生成"}
+                <RefreshCw className="w-4 h-4" />
+                テーマを変える
+              </button>
+              <button
+                onClick={() => setShowAIPanel(!showAIPanel)}
+                className="flex-1 h-11 rounded-xl bg-violet-100 text-violet-700 font-bold text-sm active:scale-95 transition-transform flex items-center justify-center gap-2 hover:bg-violet-200"
+              >
+                <Sparkles className="w-4 h-4" />
+                AIで生成
               </button>
             </div>
 
+            {showAIPanel && (
+              <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-200 space-y-3">
+                <input
+                  type="text"
+                  value={aiCustomPrompt}
+                  onChange={(e) => setAiCustomPrompt(e.target.value)}
+                  placeholder="例: 食べ物に関するテーマ、もっと面白く"
+                  className="w-full h-10 rounded-xl border-2 border-gray-200 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/20 bg-gray-50 px-3 text-sm font-medium transition-all outline-none"
+                />
+                <button
+                  onClick={handleGenerateAITopic}
+                  disabled={isGeneratingAI}
+                  className="w-full h-11 rounded-xl bg-gray-900 text-white font-bold text-sm active:scale-95 transition-transform flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                  {isGeneratingAI ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4" />
+                  )}
+                  {isGeneratingAI ? "生成中..." : "AIで生成"}
+                </button>
+              </div>
+            )}
+
             <button
               onClick={handlePhaseTransition}
-              className="w-full h-14 rounded-xl bg-white text-orange-600 font-black text-base shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2 border-2 border-orange-200"
+              className="w-full h-14 rounded-xl bg-white text-gray-900 font-black text-base shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2 border-2 border-gray-300"
             >
               <BookOpen className="w-5 h-5" />
               エピソードタイムへ
@@ -363,9 +371,9 @@ export default function Game() {
             animate={{ opacity: 1, y: 0 }}
             className="space-y-4"
           >
-            <div className="bg-gradient-to-br from-purple-400 to-pink-400 rounded-3xl shadow-xl p-6 border border-purple-300">
+            <div className="bg-gray-900 rounded-3xl shadow-xl p-6">
               <div className="flex items-center gap-3 mb-5">
-                <div className="w-12 h-12 bg-white/40 rounded-2xl flex items-center justify-center shadow-md">
+                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center shadow-md">
                   <BookOpen className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1">
@@ -385,8 +393,8 @@ export default function Game() {
               </div>
             </div>
 
-            <div className="bg-purple-50 rounded-xl p-4 border border-purple-200">
-              <p className="text-xs text-purple-900 leading-relaxed font-medium text-center">
+            <div className="bg-gray-100 rounded-xl p-4 border border-gray-200">
+              <p className="text-xs text-gray-600 leading-relaxed font-medium text-center">
                 🎭 順番は自由！それぞれエピソードを話してください<br />
                 🐺 人狼=嘘のエピソード / 👤 村人=本当のエピソード
               </p>
@@ -394,7 +402,7 @@ export default function Game() {
 
             <button
               onClick={handlePhaseTransition}
-              className="w-full h-14 rounded-xl bg-white text-purple-600 font-black text-base shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2 border-2 border-purple-200"
+              className="w-full h-14 rounded-xl bg-white text-gray-900 font-black text-base shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2 border-2 border-gray-300"
             >
               <MessageCircle className="w-5 h-5" />
               議論フェーズへ
@@ -409,9 +417,9 @@ export default function Game() {
             animate={{ opacity: 1, y: 0 }}
             className="space-y-4"
           >
-            <div className="bg-gradient-to-br from-blue-400 to-cyan-400 rounded-3xl shadow-xl p-6 border border-blue-300">
+            <div className="bg-gray-900 rounded-3xl shadow-xl p-6">
               <div className="flex items-center gap-3 mb-5">
-                <div className="w-12 h-12 bg-white/40 rounded-2xl flex items-center justify-center shadow-md">
+                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center shadow-md">
                   <MessageCircle className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1">
@@ -436,8 +444,8 @@ export default function Game() {
               </div>
             </div>
 
-            <div className="bg-yellow-50 rounded-xl p-4 border border-yellow-200">
-              <p className="text-xs text-yellow-900 leading-relaxed font-medium text-center">
+            <div className="bg-gray-100 rounded-xl p-4 border border-gray-200">
+              <p className="text-xs text-gray-600 leading-relaxed font-medium text-center">
                 📢 タイマー終了後、みんなで一斉に発表<br />
                 🤔 誰が人狼か推理してください
               </p>
@@ -445,7 +453,7 @@ export default function Game() {
 
             <button
               onClick={handlePhaseTransition}
-              className="w-full h-14 rounded-xl bg-white text-blue-600 font-black text-base shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2 border-2 border-blue-200"
+              className="w-full h-14 rounded-xl bg-white text-gray-900 font-black text-base shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2 border-2 border-gray-300"
             >
               <Vote className="w-5 h-5" />
               投票フェーズへ
@@ -460,9 +468,9 @@ export default function Game() {
             animate={{ opacity: 1, y: 0 }}
             className="space-y-4"
           >
-            <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-3xl shadow-xl p-6 border border-purple-300">
+            <div className="bg-gray-900 rounded-3xl shadow-xl p-6">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-white/40 rounded-2xl flex items-center justify-center shadow-md">
+                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center shadow-md">
                   <Vote className="w-6 h-6 text-white" />
                 </div>
                 <div>
@@ -472,14 +480,14 @@ export default function Game() {
               </div>
             </div>
 
-            <div className="bg-purple-50 rounded-xl p-3 border border-purple-200">
-              <p className="text-xs text-purple-900 text-center font-medium">
+            <div className="bg-gray-100 rounded-xl p-3 border border-gray-200">
+              <p className="text-xs text-gray-600 text-center font-medium">
                 🗳️ 人狼だと疑われたプレイヤーを選択<br />
                 複数選択可能
               </p>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100">
+            <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-200">
               <div className="font-bold text-gray-800 mb-3 text-sm">疑われているプレイヤー</div>
               <div className="grid grid-cols-2 gap-2">
                 {alivePlayers.map(player => (
@@ -493,7 +501,7 @@ export default function Game() {
                     }}
                     className={`h-11 rounded-xl font-bold text-sm transition-all ${
                       suspectedPlayers.includes(player.id)
-                        ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md scale-105"
+                        ? "bg-gray-900 text-white shadow-md scale-105"
                         : "bg-gray-100 text-gray-700 active:scale-95"
                     }`}
                   >
@@ -503,7 +511,7 @@ export default function Game() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100">
+            <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-200">
               <button
                 onClick={() => {
                   setSkipExile(!skipExile);
@@ -513,7 +521,7 @@ export default function Game() {
                 }}
                 className={`w-full h-12 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
                   skipExile
-                    ? "bg-gradient-to-r from-gray-600 to-gray-700 text-white shadow-md scale-105"
+                    ? "bg-gray-700 text-white shadow-md scale-105"
                     : "bg-gray-100 text-gray-700 active:scale-95"
                 }`}
               >
@@ -527,7 +535,7 @@ export default function Game() {
             <button
               onClick={handlePhaseTransition}
               disabled={!skipExile && suspectedPlayers.length === 0}
-              className="w-full h-14 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-black text-base shadow-lg disabled:opacity-50 disabled:scale-100 active:scale-95 transition-transform"
+              className="w-full h-14 rounded-xl bg-gray-900 text-white font-black text-base shadow-lg disabled:opacity-50 disabled:scale-100 active:scale-95 transition-transform"
             >
               投票結果を確定
             </button>
@@ -541,7 +549,7 @@ export default function Game() {
             animate={{ opacity: 1, scale: 1 }}
             className="space-y-4"
           >
-            <div className="bg-white rounded-3xl shadow-xl p-10 text-center border border-gray-100">
+            <div className="bg-white rounded-3xl shadow-xl p-10 text-center border border-gray-200">
               <div className="text-8xl mb-6">⚖️</div>
               <h2 className="text-3xl font-black text-gray-800 mb-4">
                 投票結果
@@ -578,7 +586,7 @@ export default function Game() {
 
             <button
               onClick={handlePhaseTransition}
-              className="w-full h-14 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-base shadow-lg active:scale-95 transition-transform"
+              className="w-full h-14 rounded-xl bg-gray-900 text-white font-bold text-base shadow-lg active:scale-95 transition-transform"
             >
               次へ進む
             </button>
@@ -592,14 +600,14 @@ export default function Game() {
             animate={{ opacity: 1, y: 0 }}
             className="space-y-4"
           >
-            <div className="bg-gradient-to-br from-slate-700 to-slate-900 rounded-3xl shadow-xl p-6 border border-slate-600">
+            <div className="bg-gray-900 rounded-3xl shadow-xl p-6">
               <div className="flex items-center gap-3 mb-5">
                 <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center shadow-md">
                   <Moon className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black text-white">夜のフェーズ</h2>
-                  <p className="text-white/80 text-xs font-bold">NIGHT</p>
+                  <h2 className="text-2xl font-black text-white">人狼タイム</h2>
+                  <p className="text-white/80 text-xs font-bold">WEREWOLF TIME</p>
                 </div>
               </div>
 
@@ -611,7 +619,7 @@ export default function Game() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100">
+            <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-200">
               <div className="font-bold text-gray-800 mb-3 text-sm">除外するプレイヤー</div>
               <div className="grid grid-cols-2 gap-2">
                 {alivePlayers
@@ -622,7 +630,7 @@ export default function Game() {
                       onClick={() => setSelectedPlayer(player.id)}
                       className={`h-11 rounded-xl font-bold text-sm transition-all ${
                         selectedPlayer === player.id
-                          ? "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md scale-105"
+                          ? "bg-gray-900 text-white shadow-md scale-105"
                           : "bg-gray-100 text-gray-700 active:scale-95"
                       }`}
                     >
@@ -635,17 +643,17 @@ export default function Game() {
             <button
               onClick={handlePhaseTransition}
               disabled={selectedPlayer === null}
-              className="w-full h-14 rounded-xl bg-gradient-to-r from-orange-500 to-yellow-500 text-white font-black text-base shadow-lg disabled:opacity-50 disabled:scale-100 active:scale-95 transition-transform flex items-center justify-center gap-2"
+              className="w-full h-14 rounded-xl bg-gray-900 text-white font-black text-base shadow-lg disabled:opacity-50 disabled:scale-100 active:scale-95 transition-transform flex items-center justify-center gap-2"
             >
               <Sun className="w-5 h-5" />
-              朝を迎える
+              次のDayへ
             </button>
           </motion.div>
         )}
 
         {/* プレイヤーステータス */}
         {gameState.currentPhase !== "gameOver" && (
-          <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100">
+          <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-200">
             <div className="flex items-center gap-2 mb-3">
               <Users className="w-5 h-5 text-gray-700" />
               <span className="font-black text-gray-800 text-sm">
@@ -658,7 +666,7 @@ export default function Game() {
                   key={player.id}
                   className={`px-3 py-2.5 rounded-xl flex items-center justify-between ${
                     player.isAlive
-                      ? "bg-gradient-to-r from-purple-100 to-pink-100 border border-purple-200"
+                      ? "bg-gray-100 border border-gray-200"
                       : "bg-gray-100 opacity-50 border border-gray-200"
                   }`}
                 >
