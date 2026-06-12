@@ -30,5 +30,6 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Publish update
-        # GitHub Actions は CI=true のため eas は自動的に非対話で動作する
-        run: eas update --branch main --message "${{ github.event.head_commit.message }}"
+        # GitHub Actions は CI=true のため eas は自動的に非対話で動作する。
+        # メッセージは run番号 + SHA で常に非空・安全（コミットメッセージの改行/引用符による事故を回避）。
+        run: eas update --branch main --message "CI #${{ github.run_number }} (${{ github.sha }})"
