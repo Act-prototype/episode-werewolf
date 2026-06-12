@@ -10,7 +10,7 @@ import { Icon } from "@/components/Icon";
 import { AppButton } from "@/components/AppButton";
 import { PressableScale } from "@/components/PressableScale";
 import { InfoNote } from "@/components/InfoNote";
-import { GameMenu } from "@/components/GameMenu";
+import { GameControls } from "@/components/GameControls";
 import { haptics } from "@/components/haptics";
 import { GameState, GamePhase } from "@/game/types";
 import { checkGameOver, eliminatePlayer } from "@/game/gameLogic";
@@ -157,7 +157,6 @@ export default function Game() {
   return (
     <Screen scroll={false} background={colors.ink50} avoidKeyboard>
       <Header
-        variant="bar"
         icon="wolf"
         title="エピソード人狼"
         subtitle={`${alive.length}人生存`}
@@ -166,7 +165,7 @@ export default function Game() {
             <View style={styles.dayPill}>
               <Text style={styles.dayText}>Day{state.currentDay}</Text>
             </View>
-            <GameMenu mode="normal" />
+            <GameControls mode="normal" />
           </View>
         }
       />

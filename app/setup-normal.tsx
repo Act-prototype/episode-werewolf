@@ -9,7 +9,6 @@ import { ThemePicker } from "@/components/ThemePicker";
 import { NameInputList } from "@/components/NameInputList";
 import { BottomBar } from "@/components/BottomBar";
 import { AppButton } from "@/components/AppButton";
-import { GameMenu } from "@/components/GameMenu";
 import { episodeThemes } from "@/game/episodeThemes";
 import { saveGameState } from "@/game/storage";
 import { GameState } from "@/game/types";
@@ -64,7 +63,6 @@ export default function Setup() {
         title="通常モード"
         subtitle="NORMAL MODE"
         onBack={() => router.replace("/")}
-        right={<GameMenu mode="normal" showRules={false} />}
       />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
