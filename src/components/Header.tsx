@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PressableScale } from "./PressableScale";
 import { IconBadge } from "./IconBadge";
 import { Icon, IconName } from "./Icon";
-import { colors, space, sizing, type } from "@/theme/tokens";
+import { colors, space, type } from "@/theme/tokens";
 
 interface Props {
   icon?: IconName;
@@ -20,17 +20,18 @@ interface Props {
 
 /**
  * 濃紺グレーのヘッダー。
- * モバイルで圧迫しないよう余白とアイコンを抑え、ステータスバー下までは濃色で満たす。
+ * hero でもナビバー相当の高さに抑え、戻る/メニューは両端にオーバーレイして
+ * 縦の専有を最小化する。ステータスバー下までは濃色で満たす。
  */
 export function Header({ icon, title, subtitle, onBack, right, variant = "hero", children }: Props) {
   const insets = useSafeAreaInsets();
 
   if (variant === "bar") {
     return (
-      <View style={[styles.base, { paddingTop: insets.top + space.md }]}>
+      <View style={[styles.base, { paddingTop: insets.top + space.sm }]}>
         <View style={styles.barRow}>
           <View style={styles.barLeft}>
-            {icon && <IconBadge icon={icon} box={38} size={22} bg={colors.ink800} />}
+            {icon && <IconBadge icon={icon} box={36} size={20} bg={colors.ink800} />}
             <View style={{ flexShrink: 1 }}>
               <Text style={styles.barTitle} numberOfLines={1}>{title}</Text>
               {subtitle ? <Text style={styles.barSub}>{subtitle}</Text> : null}
@@ -44,24 +45,22 @@ export function Header({ icon, title, subtitle, onBack, right, variant = "hero",
   }
 
   return (
-    <View style={[styles.base, styles.hero, { paddingTop: insets.top + space.md }]}>
-      <View style={styles.heroTop}>
-        {onBack ? (
-          <PressableScale onPress={onBack} style={styles.iconBtn}>
+    <View style={[styles.base, { paddingTop: insets.top + space.sm, paddingBottom: space.md }]}>
+      <View style={styles.navRow}>
+        {onBack && (
+          <PressableScale onPress={onBack} style={styles.backBtn}>
             <Icon name="back" size={20} color={colors.white} />
           </PressableScale>
-        ) : (
-          <View style={styles.spacer} />
         )}
-        <View style={{ flex: 1 }} />
-        {right ?? <View style={styles.spacer} />}
-      </View>
 
-      <View style={styles.heroCenter}>
-        {icon && <IconBadge icon={icon} box={sizing.heroIcon} size={28} bg={colors.ink800} />}
-        <Text style={styles.heroTitle}>{title}</Text>
-        {subtitle ? <Text style={styles.heroSub}>{subtitle}</Text> : null}
+        <View style={styles.brand}>
+          {icon && <IconBadge icon={icon} box={32} size={18} bg={colors.ink800} />}
+          <Text style={styles.title} numberOfLines={1}>{title}</Text>
+        </View>
+
+        {right && <View style={styles.right}>{right}</View>}
       </View>
+      {subtitle ? <Text style={styles.sub}>{subtitle}</Text> : null}
       {children}
     </View>
   );
@@ -70,20 +69,22 @@ export function Header({ icon, title, subtitle, onBack, right, variant = "hero",
 const styles = StyleSheet.create({
   base: { backgroundColor: colors.ink900, paddingHorizontal: space.xl },
 
-  hero: { paddingBottom: space.xl, gap: space.md },
-  heroTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  heroCenter: { alignItems: "center", gap: space.sm, marginTop: space.xs },
-  heroTitle: { ...type.display, color: colors.white },
-  heroSub: { ...type.caption, color: colors.ink400, letterSpacing: 2 },
-  iconBtn: {
-    width: 38,
-    height: 38,
+  navRow: { height: 40, flexDirection: "row", alignItems: "center", justifyContent: "center" },
+  brand: { flexDirection: "row", alignItems: "center", gap: space.sm, maxWidth: "72%" },
+  title: { ...type.h1, color: colors.white },
+  sub: { ...type.caption, color: colors.ink400, letterSpacing: 2, textAlign: "center", marginTop: 2 },
+  backBtn: {
+    position: "absolute",
+    left: 0,
+    top: 2,
+    width: 36,
+    height: 36,
     borderRadius: 12,
     backgroundColor: colors.ink800,
     alignItems: "center",
     justifyContent: "center",
   },
-  spacer: { width: 38, height: 38 },
+  right: { position: "absolute", right: 0 },
 
   barRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingBottom: space.md, gap: space.md },
   barLeft: { flexDirection: "row", alignItems: "center", gap: space.sm, flexShrink: 1 },
