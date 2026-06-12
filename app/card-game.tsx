@@ -496,7 +496,7 @@ function DuelHeader({
 }) {
   const insets = useSafeAreaInsets();
   return (
-    <View style={[styles.dHeader, { paddingTop: insets.top + space.md }, hero && { paddingTop: insets.top + space["2xl"], paddingBottom: space["2xl"], alignItems: "center" }]}>
+    <View style={[styles.dHeader, { paddingTop: insets.top + space.sm }, hero && { paddingTop: insets.top + space.xl, paddingBottom: space.xl, alignItems: "center" }]}>
       <View style={styles.dHeaderRow}>
         <View style={hero ? { alignItems: "center" } : undefined}>
           {hero && <Icon name="trophy" size={48} color={colors.white} />}
@@ -580,7 +580,7 @@ function PlayedCardRow({ name, type, large }: { name: string; type: CardType; la
 }
 
 const styles = StyleSheet.create({
-  dHeader: { backgroundColor: colors.ink900, paddingHorizontal: space["2xl"], paddingBottom: space.xl, gap: space.md },
+  dHeader: { backgroundColor: colors.ink900, paddingHorizontal: space.xl, paddingBottom: space.lg, gap: space.md },
   dHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   dTitle: { fontSize: 18, fontWeight: "800", color: colors.white },
   dSub: { fontSize: 13, fontWeight: "700", color: "rgba(255,255,255,0.8)", marginTop: 2 },
