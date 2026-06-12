@@ -19,7 +19,7 @@ export default function ModeSelection() {
 
   return (
     <Screen scroll background={colors.ink50} edges={{ top: false, bottom: true }} contentContainerStyle={{ paddingBottom: space["2xl"] }}>
-      <Header icon="wolf" title="エピソード人狼" subtitle="EPISODE WEREWOLF" />
+      <Header icon="wolf" title="エピソード人狼" subtitle="EPISODE WEREWOLF" center />
 
       <View style={styles.body}>
         <Text style={styles.lead}>遊び方を選ぶ</Text>
