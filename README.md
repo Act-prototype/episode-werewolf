@@ -62,6 +62,41 @@ eas build -p ios --profile production      # → eas submit -p ios で TestFligh
 eas build -p android --profile production
 ```
 
+## iPhone の Expo Go で常に最新を見る（EAS Update）
+
+PCを開いて pull → QR を毎回やらずに、**main にマージされた最新を Expo Go で自動反映**する仕組み。
+`.github/workflows/eas-update.yml` が main への push ごとに OTA 更新を配信する。
+
+### 一度だけの初期設定
+
+```bash
+npm i -g eas-cli
+eas login                 # Expoアカウントでログイン
+eas init                  # プロジェクト作成（app.json に projectId が入る）
+eas update:configure      # Update 用の設定を追記
+git commit -am "eas: configure update" && git push   # 設定変更を反映
+```
+
+GitHub のリポジトリ Settings → Secrets and variables → Actions に
+**`EXPO_TOKEN`**（[expo.dev のアクセストークン](https://expo.dev/settings/access-tokens)）を登録する。
+
+### 以降の運用
+
+1. main にマージ → GitHub Actions が `eas update --branch main` を自動実行
+2. iPhone で初回だけ、配信された Update の QR / リンクを Expo Go で開く
+3. 次回からは Expo Go の **「最近開いた (Recently opened)」** から開き直すだけで最新を取得
+
+> ネイティブモジュール（独自 native code）を追加した場合は OTA では反映できず、
+> 新しいビルドが必要になる。現状の構成では不要。
+
+### すぐ試す / 同一Wi-Fi外で見るだけなら
+
+PCで Metro を起動したまま、トンネル経由で接続（PCは必要）:
+
+```bash
+npx expo start --tunnel
+```
+
 ## Web（統合ターゲット）
 
 ```bash
