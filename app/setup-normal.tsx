@@ -58,7 +58,7 @@ export default function Setup() {
   };
 
   return (
-    <Screen scroll={false} edges={{ top: false, bottom: false }}>
+    <Screen scroll={false} edges={{ top: false, bottom: false }} avoidKeyboard>
       <Header
         icon="players"
         title="通常モード"
@@ -67,7 +67,7 @@ export default function Setup() {
         right={<GameMenu mode="normal" showRules={false} />}
       />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
         <SectionCard icon="players" title="プレイヤー数" pill={<Pill>3人〜</Pill>}>
           <Stepper value={playerCount} min={3} onChange={updatePlayerCount} />
         </SectionCard>

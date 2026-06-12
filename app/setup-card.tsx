@@ -61,7 +61,7 @@ export default function CardSetup() {
   };
 
   return (
-    <Screen scroll={false} edges={{ top: false, bottom: false }}>
+    <Screen scroll={false} edges={{ top: false, bottom: false }} avoidKeyboard>
       <Header
         icon="card"
         title="カードモード"
@@ -70,7 +70,7 @@ export default function CardSetup() {
         right={<GameMenu mode="card" showRules={false} />}
       />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
         <SectionCard icon="players" title="プレイヤー数" pill={<Pill>2人〜</Pill>}>
           <Stepper value={playerCount} min={2} onChange={updatePlayerCount} />
         </SectionCard>
