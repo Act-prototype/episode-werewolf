@@ -5,8 +5,8 @@
 
 ## 技術スタック
 
-- **Expo SDK 52** + **Expo Router**（ファイルベースのルーティング、iOS/Android/Web 共通）
-- **React Native 0.76**（New Architecture 有効）
+- **Expo SDK 54** + **Expo Router**（ファイルベースのルーティング、iOS/Android/Web 共通）
+- **React Native 0.81 / React 19**（New Architecture 有効）
 - **react-native-reanimated / gesture-handler** — ネイティブな画面遷移・押下アニメーション
 - **expo-haptics** — 役職めくり・カード公開などの触覚フィードバック
 - **@expo/vector-icons (Material Icons)** — 絵文字は不使用。Google の Material Icons に統一
