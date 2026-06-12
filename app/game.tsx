@@ -158,16 +158,9 @@ export default function Game() {
     <Screen scroll={false} background={colors.ink50} avoidKeyboard>
       <Header
         icon="wolf"
-        title="エピソード人狼"
+        title={`Day ${state.currentDay}`}
         subtitle={`${alive.length}人生存`}
-        right={
-          <View style={styles.headerRight}>
-            <View style={styles.dayPill}>
-              <Text style={styles.dayText}>Day{state.currentDay}</Text>
-            </View>
-            <GameControls mode="normal" />
-          </View>
-        }
+        right={<GameControls mode="normal" />}
       />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
@@ -429,9 +422,6 @@ function formatTime(s: number): string {
 }
 
 const styles = StyleSheet.create({
-  headerRight: { flexDirection: "row", alignItems: "center", gap: space.md },
-  dayPill: { backgroundColor: colors.ink900, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: "rgba(255,255,255,0.25)" },
-  dayText: { color: colors.white, fontWeight: "800", fontSize: 15 },
   content: { padding: space.xl, paddingBottom: space["3xl"] },
 
   banner: { backgroundColor: colors.ink900, borderRadius: radius["2xl"], padding: space.xl, gap: space.md },
