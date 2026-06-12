@@ -10,7 +10,7 @@ import { useRouter } from "expo-router";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
 import { AppButton } from "@/components/AppButton";
-import { GameMenu } from "@/components/GameMenu";
+import { GameControls } from "@/components/GameControls";
 import { IconBadge } from "@/components/IconBadge";
 import { Icon } from "@/components/Icon";
 import { InfoNote } from "@/components/InfoNote";
@@ -75,7 +75,7 @@ export default function RoleReveal() {
             <Text style={styles.progressLabel}>
               {index + 1} / {state.players.length}
             </Text>
-            <GameMenu mode="normal" showRules={false} />
+            <GameControls mode="normal" showRules={false} />
           </View>
         </View>
         <View style={styles.track}>

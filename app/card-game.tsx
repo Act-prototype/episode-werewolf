@@ -10,7 +10,7 @@ import { IconBadge } from "@/components/IconBadge";
 import { AppButton } from "@/components/AppButton";
 import { PressableScale } from "@/components/PressableScale";
 import { InfoNote } from "@/components/InfoNote";
-import { GameMenu } from "@/components/GameMenu";
+import { GameControls } from "@/components/GameControls";
 import { haptics } from "@/components/haptics";
 import { getTopicForTheme } from "@/game/episodeThemes";
 import { generateAITheme } from "@/game/aiTheme";
@@ -445,7 +445,7 @@ export default function Duel() {
   if (phase === "result") {
     return (
       <Screen scroll={false} background={colors.ink50}>
-        <DuelHeader title="ゲーム終了！" subtitle="" hero right={<GameMenu mode="card" showRules={false} />} />
+        <DuelHeader title="ゲーム終了！" subtitle="" hero right={<GameControls mode="card" showRules={false} />} />
         <ScrollView contentContainerStyle={styles.center} showsVerticalScrollIndicator={false}>
           <Animated.View entering={FadeIn} style={{ width: "100%", gap: space.xl }}>
             <Card elevation="raised" style={{ alignItems: "center", paddingVertical: 36, borderWidth: 4, borderColor: colors.ink300 }}>
@@ -504,7 +504,7 @@ function DuelHeader({
           {!!subtitle && <Text style={styles.dSub}>{subtitle}</Text>}
         </View>
         {right && !hero && right}
-        {!right && !hero && <GameMenu mode="card" />}
+        {!right && !hero && <GameControls mode="card" />}
       </View>
       {hero && right ? <View style={styles.heroRight}>{right}</View> : null}
       {children}

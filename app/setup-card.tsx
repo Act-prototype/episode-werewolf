@@ -9,7 +9,6 @@ import { ThemePicker } from "@/components/ThemePicker";
 import { NameInputList } from "@/components/NameInputList";
 import { BottomBar } from "@/components/BottomBar";
 import { AppButton } from "@/components/AppButton";
-import { GameMenu } from "@/components/GameMenu";
 import { episodeThemes } from "@/game/episodeThemes";
 import { saveCardState } from "@/game/storage";
 import { colors, space } from "@/theme/tokens";
@@ -67,7 +66,6 @@ export default function CardSetup() {
         title="カードモード"
         subtitle="CARD MODE"
         onBack={() => router.replace("/")}
-        right={<GameMenu mode="card" showRules={false} />}
       />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
