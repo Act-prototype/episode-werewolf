@@ -39,9 +39,9 @@ export function Pill({ children, icon }: { children: ReactNode; icon?: IconName 
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: space.xl },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: space.lg },
   left: { flexDirection: "row", alignItems: "center", gap: space.md },
-  title: { fontSize: 18, fontWeight: "800", color: colors.ink800 },
+  title: { fontSize: 16, fontWeight: "800", color: colors.ink800 },
   pill: {
     flexDirection: "row",
     alignItems: "center",

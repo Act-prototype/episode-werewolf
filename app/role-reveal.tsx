@@ -18,7 +18,7 @@ import { haptics } from "@/components/haptics";
 import { GameState } from "@/game/types";
 import { assignRoles } from "@/game/gameLogic";
 import { loadGameState, saveGameState } from "@/game/storage";
-import { colors, radius, space } from "@/theme/tokens";
+import { colors, radius, space, sizing, type } from "@/theme/tokens";
 
 export default function RoleReveal() {
   const router = useRouter();
@@ -86,8 +86,8 @@ export default function RoleReveal() {
       <View style={styles.body}>
         {!revealed ? (
           <Animated.View key="hidden" entering={FadeIn} style={{ gap: space["2xl"], width: "100%" }}>
-            <Card padded elevation="raised" style={{ alignItems: "center", paddingVertical: 48 }}>
-              <IconBadge icon="villager" box={120} size={64} rounded="circle" bg={colors.ink900} />
+            <Card padded elevation="raised" style={{ alignItems: "center", paddingVertical: 32 }}>
+              <IconBadge icon="villager" box={sizing.avatar} size={36} rounded="circle" bg={colors.ink900} />
               <Text style={styles.playerName}>{player.name}</Text>
               <Text style={styles.turnHint}>あなたの番です</Text>
             </Card>
@@ -140,7 +140,7 @@ function FlipCard({ role, isLast, onNext }: { role: "人狼" | "村人"; isLast:
           flip,
         ]}
       >
-        <Icon name={isWolf ? "wolf" : "villager"} size={96} color={colors.white} />
+        <Icon name={isWolf ? "wolf" : "villager"} size={60} color={colors.white} />
         <Text style={styles.roleName}>{role}</Text>
         <Text style={styles.roleSub}>{isWolf ? "WEREWOLF" : "VILLAGER"}</Text>
       </Animated.View>
@@ -175,13 +175,13 @@ const styles = StyleSheet.create({
   track: { height: 12, backgroundColor: colors.ink200, borderRadius: 999, overflow: "hidden" },
   fill: { height: "100%", backgroundColor: colors.ink900, borderRadius: 999 },
 
-  body: { flex: 1, alignItems: "center", justifyContent: "center", padding: space["2xl"] },
-  playerName: { fontSize: 44, fontWeight: "800", color: colors.ink800, marginTop: space.xl, letterSpacing: -0.5 },
-  turnHint: { fontSize: 18, fontWeight: "700", color: colors.ink500, marginTop: 4 },
+  body: { flex: 1, alignItems: "center", justifyContent: "center", padding: space.xl },
+  playerName: { fontSize: 26, fontWeight: "800", color: colors.ink800, marginTop: space.md, letterSpacing: -0.3 },
+  turnHint: { ...type.body, color: colors.ink500, marginTop: 4 },
 
-  roleCard: { borderRadius: radius["3xl"], paddingVertical: 56, alignItems: "center", borderWidth: 4 },
-  roleName: { fontSize: 56, fontWeight: "800", color: colors.white, marginTop: space.lg },
-  roleSub: { fontSize: 18, fontWeight: "800", color: "rgba(255,255,255,0.9)", letterSpacing: 4, marginTop: 4 },
+  roleCard: { borderRadius: radius["2xl"], paddingVertical: 36, alignItems: "center", borderWidth: 3 },
+  roleName: { fontSize: 32, fontWeight: "800", color: colors.white, marginTop: space.sm },
+  roleSub: { fontSize: 13, fontWeight: "800", color: "rgba(255,255,255,0.9)", letterSpacing: 3, marginTop: 4 },
   point: { flexDirection: "row", alignItems: "center", gap: space.lg, padding: space.lg, borderRadius: radius.md, borderWidth: 1 },
   pointText: { fontSize: 14, fontWeight: "800", color: colors.ink800, flexShrink: 1 },
 });

@@ -1,7 +1,7 @@
 import { Text, StyleSheet, View, ActivityIndicator, ViewStyle, StyleProp } from "react-native";
 import { PressableScale } from "./PressableScale";
 import { Icon, IconName } from "./Icon";
-import { colors, radius, shadow } from "@/theme/tokens";
+import { colors, radius, shadow, sizing } from "@/theme/tokens";
 
 type Variant = "primary" | "secondary" | "ai" | "danger" | "outline";
 type Size = "lg" | "md" | "sm";
@@ -29,9 +29,9 @@ const VARIANT: Record<Variant, { bg: string; fg: string; border?: string }> = {
 };
 
 const SIZE: Record<Size, { h: number; fontSize: number; iconSize: number }> = {
-  lg: { h: 60, fontSize: 18, iconSize: 24 },
-  md: { h: 52, fontSize: 16, iconSize: 22 },
-  sm: { h: 44, fontSize: 14, iconSize: 18 },
+  lg: { h: sizing.buttonLg, fontSize: 16, iconSize: 22 },
+  md: { h: sizing.buttonMd, fontSize: 15, iconSize: 20 },
+  sm: { h: sizing.buttonSm, fontSize: 13, iconSize: 18 },
 };
 
 /** アプリ標準ボタン。押下スケール・触覚・ローディング・アイコンを内包。 */
@@ -85,7 +85,7 @@ export function AppButton({
 }
 
 const styles = StyleSheet.create({
-  btn: { borderRadius: radius["2xl"], alignItems: "center", justifyContent: "center", paddingHorizontal: 16 },
+  btn: { borderRadius: radius.lg, alignItems: "center", justifyContent: "center", paddingHorizontal: 16 },
   row: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   label: { fontWeight: "800" },
 });

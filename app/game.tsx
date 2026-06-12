@@ -155,7 +155,7 @@ export default function Game() {
   const topic = state.currentTopic;
 
   return (
-    <Screen scroll={false} background={colors.ink50}>
+    <Screen scroll={false} background={colors.ink50} avoidKeyboard>
       <Header
         variant="bar"
         icon="wolf"
@@ -171,12 +171,12 @@ export default function Game() {
         }
       />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
         {/* ゲームオーバー */}
         {state.currentPhase === "gameOver" && (
           <Animated.View entering={FadeIn} style={{ gap: space.lg }}>
             <Card style={{ alignItems: "center", paddingVertical: 36 }}>
-              <Icon name={state.winner === "人狼" ? "wolf" : "players"} size={88} color={state.winner === "人狼" ? colors.wolf : colors.villager} />
+              <Icon name={state.winner === "人狼" ? "wolf" : "players"} size={64} color={state.winner === "人狼" ? colors.wolf : colors.villager} />
               <Text style={styles.bigWin}>{state.winner}の勝利！</Text>
               <Text style={styles.winSub}>
                 {state.winner === "人狼" ? "人狼が村を支配しました" : "村人が人狼を追放しました"}
@@ -328,7 +328,7 @@ export default function Game() {
         {state.currentPhase === "voteResult" && (
           <Animated.View entering={FadeIn} style={{ gap: space.lg }}>
             <Card style={{ alignItems: "center", paddingVertical: 36 }}>
-              <Icon name="balance" size={72} color={colors.ink700} />
+              <Icon name="balance" size={56} color={colors.ink700} />
               <Text style={styles.resultBig}>投票結果</Text>
               {state.eliminatedTonight !== null ? (
                 <View style={[styles.voteOutcome, { backgroundColor: colors.wolfSurface, borderColor: colors.wolfBorder }]}>
@@ -435,18 +435,18 @@ const styles = StyleSheet.create({
   dayText: { color: colors.white, fontWeight: "800", fontSize: 15 },
   content: { padding: space.xl, paddingBottom: space["3xl"] },
 
-  banner: { backgroundColor: colors.ink900, borderRadius: radius["3xl"], padding: space["2xl"], gap: space.lg },
+  banner: { backgroundColor: colors.ink900, borderRadius: radius["2xl"], padding: space.xl, gap: space.md },
   bannerHead: { flexDirection: "row", alignItems: "center", gap: space.md },
-  bannerTitle: { fontSize: 22, fontWeight: "800", color: colors.white },
-  bannerSub: { fontSize: 12, fontWeight: "700", color: "rgba(255,255,255,0.9)" },
-  timer: { backgroundColor: "rgba(255,255,255,0.95)", paddingHorizontal: 16, paddingVertical: 8, borderRadius: radius.xl },
-  timerText: { fontSize: 22, fontWeight: "800" },
+  bannerTitle: { fontSize: 18, fontWeight: "800", color: colors.white },
+  bannerSub: { fontSize: 11, fontWeight: "700", color: "rgba(255,255,255,0.85)", letterSpacing: 1 },
+  timer: { backgroundColor: "rgba(255,255,255,0.95)", paddingHorizontal: 14, paddingVertical: 6, borderRadius: radius.lg },
+  timerText: { fontSize: 20, fontWeight: "800" },
 
-  themeBox: { backgroundColor: colors.white, borderRadius: radius.xl, padding: space.xl, alignItems: "center" },
-  themeTag: { backgroundColor: colors.ink900, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999, marginBottom: space.md },
-  themeTagText: { color: colors.white, fontSize: 11, fontWeight: "800", letterSpacing: 1 },
-  themeCategory: { fontSize: 20, fontWeight: "800", color: colors.ink800, marginBottom: 4 },
-  themeTopic: { fontSize: 16, fontWeight: "700", color: colors.ink700 },
+  themeBox: { backgroundColor: colors.white, borderRadius: radius.lg, padding: space.lg, alignItems: "center" },
+  themeTag: { backgroundColor: colors.ink900, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999, marginBottom: space.sm },
+  themeTagText: { color: colors.white, fontSize: 10, fontWeight: "800", letterSpacing: 1 },
+  themeCategory: { fontSize: 17, fontWeight: "800", color: colors.ink800, marginBottom: 4 },
+  themeTopic: { fontSize: 15, fontWeight: "700", color: colors.ink700, textAlign: "center" },
 
   themeMini: { backgroundColor: colors.white, borderRadius: radius.xl, padding: space.lg },
   themeMiniLabel: { fontSize: 11, fontWeight: "700", color: colors.ink500, marginBottom: 2 },
@@ -456,9 +456,9 @@ const styles = StyleSheet.create({
   rowGap: { flexDirection: "row", gap: space.sm },
   aiInput: { height: 44, borderRadius: radius.md, borderWidth: 2, borderColor: colors.ink200, backgroundColor: colors.ink50, paddingHorizontal: 12, fontSize: 14, fontWeight: "500", color: colors.ink900 },
 
-  bigWin: { fontSize: 30, fontWeight: "800", color: colors.ink800, marginTop: space.lg },
-  winSub: { fontSize: 15, fontWeight: "500", color: colors.ink600, marginTop: 4 },
-  resultHead: { fontSize: 18, fontWeight: "800", color: colors.ink800, textAlign: "center", marginBottom: space.lg },
+  bigWin: { fontSize: 24, fontWeight: "800", color: colors.ink800, marginTop: space.md },
+  winSub: { fontSize: 14, fontWeight: "500", color: colors.ink600, marginTop: 4 },
+  resultHead: { fontSize: 16, fontWeight: "800", color: colors.ink800, textAlign: "center", marginBottom: space.lg },
   resultRow: { padding: space.lg, borderRadius: radius.md, borderWidth: 2, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   resultLeft: { flexDirection: "row", alignItems: "center", gap: space.md },
   resultName: { fontSize: 15, fontWeight: "700", color: colors.ink800 },
@@ -471,7 +471,7 @@ const styles = StyleSheet.create({
   skipBtn: { height: 48, borderRadius: radius.md, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: space.sm },
   skipText: { fontSize: 14, fontWeight: "700" },
 
-  resultBig: { fontSize: 28, fontWeight: "800", color: colors.ink800, marginVertical: space.lg },
+  resultBig: { fontSize: 22, fontWeight: "800", color: colors.ink800, marginVertical: space.md },
   voteOutcome: { width: "100%", borderRadius: radius.xl, borderWidth: 2, padding: space.xl, alignItems: "center", gap: space.sm },
   elimName: { fontSize: 22, fontWeight: "800", color: colors.ink800 },
   elimSub: { fontSize: 15, fontWeight: "700", color: colors.ink600 },

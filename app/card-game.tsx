@@ -15,7 +15,7 @@ import { haptics } from "@/components/haptics";
 import { getTopicForTheme } from "@/game/episodeThemes";
 import { generateAITheme } from "@/game/aiTheme";
 import { loadCardState, clearCardState, CardGameState } from "@/game/storage";
-import { colors, radius, space } from "@/theme/tokens";
+import { colors, radius, space, sizing, type } from "@/theme/tokens";
 
 type CardType = "werewolf" | "villager";
 type Phase = "themeAnnouncement" | "cardSelect" | "episode" | "doubt" | "result" | "reveal";
@@ -218,9 +218,9 @@ export default function Duel() {
   // ---- テーマ発表 ----
   if (phase === "themeAnnouncement") {
     return (
-      <Screen scroll={false} background={colors.ink50}>
+      <Screen scroll={false} background={colors.ink50} avoidKeyboard>
         <DuelHeader title="カードモード" subtitle={`Day${gameState.currentRound}`} />
-        <ScrollView contentContainerStyle={styles.center} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={styles.center} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
           <Animated.View entering={FadeIn} style={{ width: "100%", gap: space.xl }}>
             <Card elevation="raised" style={{ alignItems: "center", paddingVertical: 32 }}>
               <View style={styles.themeTag}><Text style={styles.themeTagText}>TODAY'S THEME</Text></View>
@@ -263,7 +263,7 @@ export default function Duel() {
           {!showCard ? (
             <Animated.View key="select" entering={FadeIn} style={{ width: "100%", gap: space.xl }}>
               <Card elevation="raised" style={{ alignItems: "center", paddingVertical: 28 }}>
-                <IconBadge icon="villager" box={96} size={48} rounded="circle" bg={colors.ink900} />
+                <IconBadge icon="villager" box={sizing.avatar} size={36} rounded="circle" bg={colors.ink900} />
                 <Text style={styles.bigName}>{cur.name}</Text>
                 <Text style={styles.subName}>カードを選んでください</Text>
                 <Text style={styles.remain}>残り {cur.cards} 枚</Text>
@@ -304,7 +304,7 @@ export default function Duel() {
         <ScrollView contentContainerStyle={styles.center} showsVerticalScrollIndicator={false}>
           <Animated.View entering={FadeInDown} style={{ width: "100%", gap: space.xl }}>
             <Card elevation="raised" style={{ alignItems: "center", paddingVertical: 28 }}>
-              <IconBadge icon="acting" box={96} size={48} rounded="circle" bg={colors.ink900} />
+              <IconBadge icon="acting" box={sizing.avatar} size={36} rounded="circle" bg={colors.ink900} />
               <Text style={styles.bigName}>{players[episodePlayer].name}</Text>
               <Text style={styles.subName}>がエピソードを話します</Text>
             </Card>
@@ -336,7 +336,7 @@ export default function Duel() {
         <ScrollView contentContainerStyle={styles.center} showsVerticalScrollIndicator={false}>
           <Animated.View entering={FadeIn} style={{ width: "100%", gap: space.xl }}>
             <Card elevation="raised" style={{ alignItems: "center", paddingVertical: 28 }}>
-              <IconBadge icon="thinking" box={96} size={48} rounded="circle" bg={colors.ink900} />
+              <IconBadge icon="thinking" box={sizing.avatar} size={36} rounded="circle" bg={colors.ink900} />
               <Text style={styles.bigName}>{doubter.name}</Text>
               <Text style={styles.subName}>誰をダウトしますか？</Text>
             </Card>
@@ -397,13 +397,13 @@ export default function Duel() {
         <ScrollView contentContainerStyle={styles.center} showsVerticalScrollIndicator={false}>
           <Animated.View entering={FadeIn} style={{ width: "100%", gap: space.xl }}>
             <View style={[styles.bigRoleCard, { backgroundColor: wolf ? colors.wolf : colors.villager }]}>
-              <Icon name={wolf ? "wolf" : "villager"} size={96} color={colors.white} />
+              <Icon name={wolf ? "wolf" : "villager"} size={60} color={colors.white} />
               <Text style={styles.bigRoleName}>{wolf ? "人狼" : "村人"}カード</Text>
               <Text style={styles.bigRoleSub}>{targetPlayer.name} のカード</Text>
             </View>
 
             <View style={[styles.outcome, { backgroundColor: success ? colors.successSurface : colors.dangerSurface, borderColor: success ? colors.successBorder : colors.dangerBorder }]}>
-              <Icon name={success ? "success" : "fail"} size={56} color={success ? colors.successBorder : colors.dangerBorder} />
+              <Icon name={success ? "success" : "fail"} size={48} color={success ? colors.successBorder : colors.dangerBorder} />
               <Text style={[styles.outcomeTitle, { color: success ? colors.successText : colors.dangerText }]}>{success ? "ダウト成功！" : "ダウト失敗！"}</Text>
               <Text style={[styles.outcomeSub, { color: success ? colors.successText : colors.dangerText }]}>
                 {success ? `${targetPlayer.name} にカード+1枚` : `${doubterPlayer.name} にカード+1枚`}
@@ -449,7 +449,7 @@ export default function Duel() {
         <ScrollView contentContainerStyle={styles.center} showsVerticalScrollIndicator={false}>
           <Animated.View entering={FadeIn} style={{ width: "100%", gap: space.xl }}>
             <Card elevation="raised" style={{ alignItems: "center", paddingVertical: 36, borderWidth: 4, borderColor: colors.ink300 }}>
-              <Icon name="celebrate" size={72} color={colors.ink900} />
+              <Icon name="celebrate" size={56} color={colors.ink900} />
               <Text style={styles.winnerName}>{gameState.winner}</Text>
               <Text style={styles.winnerSub}>の勝利！</Text>
             </Card>
@@ -496,11 +496,11 @@ function DuelHeader({
 }) {
   const insets = useSafeAreaInsets();
   return (
-    <View style={[styles.dHeader, { paddingTop: insets.top + space.lg }, hero && { paddingVertical: space["4xl"], alignItems: "center" }]}>
+    <View style={[styles.dHeader, { paddingTop: insets.top + space.md }, hero && { paddingTop: insets.top + space["2xl"], paddingBottom: space["2xl"], alignItems: "center" }]}>
       <View style={styles.dHeaderRow}>
         <View style={hero ? { alignItems: "center" } : undefined}>
-          {hero && <Icon name="trophy" size={56} color={colors.white} />}
-          <Text style={[styles.dTitle, hero && { fontSize: 32, marginTop: space.md }]}>{title}</Text>
+          {hero && <Icon name="trophy" size={48} color={colors.white} />}
+          <Text style={[styles.dTitle, hero && { fontSize: 24, marginTop: space.sm }]}>{title}</Text>
           {!!subtitle && <Text style={styles.dSub}>{subtitle}</Text>}
         </View>
         {right && !hero && right}
@@ -547,7 +547,7 @@ function RevealedCard({ type, note, buttonLabel, onNext }: { type: CardType; not
   return (
     <Animated.View key="confirm" entering={FadeIn} style={{ width: "100%", gap: space.xl }}>
       <View style={[styles.bigRoleCard, { backgroundColor: wolf ? colors.wolf : colors.villager }]}>
-        <Icon name={wolf ? "wolf" : "villager"} size={88} color={colors.white} />
+        <Icon name={wolf ? "wolf" : "villager"} size={60} color={colors.white} />
         <Text style={styles.bigRoleName}>{wolf ? "人狼" : "村人"}カード</Text>
         <Text style={styles.bigRoleSub}>{wolf ? "嘘のエピソードを話す" : "本当のエピソードを話す"}</Text>
       </View>
@@ -582,7 +582,7 @@ function PlayedCardRow({ name, type, large }: { name: string; type: CardType; la
 const styles = StyleSheet.create({
   dHeader: { backgroundColor: colors.ink900, paddingHorizontal: space["2xl"], paddingBottom: space.xl, gap: space.md },
   dHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  dTitle: { fontSize: 22, fontWeight: "800", color: colors.white },
+  dTitle: { fontSize: 18, fontWeight: "800", color: colors.white },
   dSub: { fontSize: 13, fontWeight: "700", color: "rgba(255,255,255,0.8)", marginTop: 2 },
   heroRight: { position: "absolute", right: space["2xl"] },
   headerMeta: { color: colors.white, fontSize: 12, fontWeight: "700" },
@@ -599,43 +599,43 @@ const styles = StyleSheet.create({
   themeTag: { backgroundColor: colors.ink900, paddingHorizontal: 16, paddingVertical: 6, borderRadius: 999, marginBottom: space.lg },
   themeTagText: { color: colors.white, fontSize: 11, fontWeight: "800", letterSpacing: 1 },
   themeCat: { fontSize: 14, fontWeight: "700", color: colors.ink500, marginBottom: space.sm },
-  themeTopic: { fontSize: 22, fontWeight: "800", color: colors.ink800, textAlign: "center" },
+  themeTopic: { fontSize: 18, fontWeight: "800", color: colors.ink800, textAlign: "center" },
 
   rowGap: { flexDirection: "row", gap: space.sm },
   aiInput: { height: 44, borderRadius: radius.md, borderWidth: 2, borderColor: colors.ink200, backgroundColor: colors.ink50, paddingHorizontal: 12, fontSize: 14, fontWeight: "500", color: colors.ink900 },
 
-  bigName: { fontSize: 34, fontWeight: "800", color: colors.ink800, marginTop: space.md },
+  bigName: { fontSize: 26, fontWeight: "800", color: colors.ink800, marginTop: space.md },
   subName: { fontSize: 15, fontWeight: "700", color: colors.ink600, marginTop: 2 },
   remain: { fontSize: 14, fontWeight: "700", color: colors.ink600, marginTop: space.md },
 
   miniTheme: { backgroundColor: colors.ink100, borderRadius: radius.xl, padding: space.lg, borderWidth: 1, borderColor: colors.ink200, alignItems: "center", width: "100%" },
   miniThemeCat: { fontSize: 12, fontWeight: "700", color: colors.ink500, marginBottom: 2 },
   miniThemeTopic: { fontSize: 16, fontWeight: "800", color: colors.ink800 },
-  topicLarge: { fontSize: 20, fontWeight: "800", color: colors.ink800, marginTop: 4 },
+  topicLarge: { fontSize: 18, fontWeight: "800", color: colors.ink800, marginTop: 4 },
 
   pickHint: { fontSize: 14, fontWeight: "700", color: colors.ink600, textAlign: "center" },
   cardGrid: { flexDirection: "row", flexWrap: "wrap", gap: space.md, justifyContent: "center" },
-  faceDown: { width: 88, aspectRatio: 2 / 3, borderRadius: radius.xl, backgroundColor: colors.ink800, alignItems: "center", justifyContent: "center" },
+  faceDown: { width: 76, aspectRatio: 2 / 3, borderRadius: radius.xl, backgroundColor: colors.ink800, alignItems: "center", justifyContent: "center" },
 
   doubtLead: { fontSize: 14, fontWeight: "700", color: colors.ink700, marginBottom: space.sm },
   doubtFine: { fontSize: 12, fontWeight: "600", color: colors.ink600, lineHeight: 18 },
 
-  bigRoleCard: { borderRadius: radius["3xl"], paddingVertical: 48, alignItems: "center", gap: space.md },
-  bigRoleName: { fontSize: 40, fontWeight: "800", color: colors.white },
-  bigRoleSub: { fontSize: 17, fontWeight: "700", color: "rgba(255,255,255,0.9)" },
+  bigRoleCard: { borderRadius: radius["2xl"], paddingVertical: 32, alignItems: "center", gap: space.sm },
+  bigRoleName: { fontSize: 30, fontWeight: "800", color: colors.white },
+  bigRoleSub: { fontSize: 14, fontWeight: "700", color: "rgba(255,255,255,0.9)" },
 
   revealHead: { fontSize: 18, fontWeight: "800", color: colors.ink800, marginBottom: space.sm },
   outcome: { borderRadius: radius.xl, borderWidth: 4, padding: space.xl, alignItems: "center", gap: space.sm },
-  outcomeTitle: { fontSize: 28, fontWeight: "800" },
-  outcomeSub: { fontSize: 16, fontWeight: "700" },
+  outcomeTitle: { fontSize: 22, fontWeight: "800" },
+  outcomeSub: { fontSize: 14, fontWeight: "700" },
   playedHead: { fontSize: 14, fontWeight: "800", color: colors.ink700, paddingHorizontal: 4 },
   playedRow: { borderRadius: radius.md, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   playedLeft: { flexDirection: "row", alignItems: "center", gap: space.sm },
   playedName: { fontWeight: "800" },
   playedType: { fontSize: 12, fontWeight: "700" },
 
-  winnerName: { fontSize: 44, fontWeight: "800", color: colors.ink800, marginTop: space.lg },
-  winnerSub: { fontSize: 22, fontWeight: "700", color: colors.ink600 },
+  winnerName: { fontSize: 28, fontWeight: "800", color: colors.ink800, marginTop: space.lg },
+  winnerSub: { fontSize: 16, fontWeight: "700", color: colors.ink600 },
   statsHead: { fontSize: 18, fontWeight: "800", color: colors.ink800, textAlign: "center", marginBottom: space.lg },
   statRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: space.md },
   statKey: { fontSize: 14, fontWeight: "700", color: colors.ink700 },

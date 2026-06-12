@@ -37,6 +37,6 @@ export function Card({
 
 const styles = StyleSheet.create({
   card: { backgroundColor: colors.white, borderRadius: radius["3xl"] },
-  padded: { padding: space["2xl"] },
+  padded: { padding: space.xl },
   bordered: { borderWidth: 1, borderColor: colors.ink200 },
 });

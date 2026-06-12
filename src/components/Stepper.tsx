@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { PressableScale } from "./PressableScale";
 import { Icon } from "./Icon";
 import { haptics } from "./haptics";
-import { colors, radius, shadow } from "@/theme/tokens";
+import { colors, radius, shadow, sizing } from "@/theme/tokens";
 
 interface Props {
   value: number;
@@ -59,22 +59,22 @@ export function Stepper({ value, onChange, min = -Infinity, max = Infinity }: Pr
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 20 },
+  row: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 24 },
   btn: {
-    width: 56,
-    height: 56,
-    borderRadius: radius.xl,
+    width: sizing.stepperBtn,
+    height: sizing.stepperBtn,
+    borderRadius: radius.lg,
     backgroundColor: colors.ink800,
     alignItems: "center",
     justifyContent: "center",
   },
   display: {
-    width: 112,
-    height: 112,
-    borderRadius: radius["3xl"],
+    width: sizing.stepperBox,
+    height: sizing.stepperBox,
+    borderRadius: radius["2xl"],
     backgroundColor: colors.ink900,
     alignItems: "center",
     justifyContent: "center",
   },
-  value: { color: colors.white, fontSize: 56, fontWeight: "800" },
+  value: { color: colors.white, fontSize: 38, fontWeight: "800" },
 });

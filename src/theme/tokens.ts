@@ -80,14 +80,33 @@ export const font = {
   regular: "400" as const,
 };
 
+/**
+ * モバイル前提に引き直したタイポスケール。
+ * 旧実装はWebの max-w-420 をそのまま持ち込み、見出し36/役職56など実機では過大だった。
+ * ここを単一の基準とし、各画面は原則これを参照する。
+ */
 export const type = {
-  hero: { fontSize: 36, fontWeight: font.black, letterSpacing: -0.5 },
-  h1: { fontSize: 28, fontWeight: font.black, letterSpacing: -0.3 },
-  h2: { fontSize: 22, fontWeight: font.black },
-  h3: { fontSize: 18, fontWeight: font.black },
-  body: { fontSize: 15, fontWeight: font.bold },
-  small: { fontSize: 13, fontWeight: font.bold },
+  /** ブランドロゴ的な最大見出し（トップのみ） */
+  display: { fontSize: 24, fontWeight: font.black, letterSpacing: -0.4 },
+  /** 画面の主役テキスト（プレイヤー名・役職名など） */
+  title: { fontSize: 22, fontWeight: font.black, letterSpacing: -0.3 },
+  h1: { fontSize: 20, fontWeight: font.black, letterSpacing: -0.2 },
+  h2: { fontSize: 17, fontWeight: font.black },
+  h3: { fontSize: 15, fontWeight: font.black },
+  body: { fontSize: 14, fontWeight: font.bold },
+  small: { fontSize: 13, fontWeight: font.medium },
   caption: { fontSize: 11, fontWeight: font.bold, letterSpacing: 1 },
+} as const;
+
+/** 主要コントロールの基準サイズ（画面間で統一） */
+export const sizing = {
+  buttonLg: 54,
+  buttonMd: 48,
+  buttonSm: 42,
+  stepperBox: 76,
+  stepperBtn: 50,
+  heroIcon: 52,
+  avatar: 72,
 } as const;
 
 /** iOS風の柔らかい影。Androidは elevation で近似。 */
