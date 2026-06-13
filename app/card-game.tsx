@@ -49,7 +49,6 @@ export default function Duel() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [selectedType, setSelectedType] = useState<CardType | null>(null);
   const [showCard, setShowCard] = useState(false);
-  const [episodePlayer, setEpisodePlayer] = useState(0);
   const [doubtingPlayer, setDoubtingPlayer] = useState(0);
   const [doubtResult, setDoubtResult] = useState<{ doubterIndex: number | null; targetIndex: number | null; isSuccess: boolean } | null>(null);
 
@@ -124,23 +123,18 @@ export default function Duel() {
     setSelectedType(null);
 
     if (next >= players.length) {
-      setEpisodePlayer(updated[0].playerIndex);
       setPhase("episode");
     } else {
       setSelectingPlayer(next);
     }
   };
 
-  const nextEpisode = () => {
-    const idx = selectedCards.findIndex((sc) => sc.playerIndex === episodePlayer);
-    if (idx < selectedCards.length - 1) {
-      setEpisodePlayer(selectedCards[idx + 1].playerIndex);
-    } else {
-      let first = 0;
-      while (first < players.length && players[first].cards === 0) first++;
-      setDoubtingPlayer(first);
-      setPhase("doubt");
-    }
+  // エピソードは通常モード同様、順番をプレイヤーに任せる（1人ずつ送らない）
+  const startDoubt = () => {
+    let first = 0;
+    while (first < players.length && players[first].cards === 0) first++;
+    setDoubtingPlayer(first);
+    setPhase("doubt");
   };
 
   const doubtPlayer = (targetIndex: number) => {
@@ -218,7 +212,7 @@ export default function Duel() {
   // ---- テーマ発表 ----
   if (phase === "themeAnnouncement") {
     return (
-      <Screen scroll={false} background={colors.ink50} avoidKeyboard>
+      <Screen scroll={false} background={colors.ink50} edges={{ top: false, bottom: true }} avoidKeyboard>
         <DuelHeader title="カードモード" subtitle={`Day${gameState.currentRound}`} />
         <ScrollView contentContainerStyle={styles.center} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
           <Animated.View entering={FadeIn} style={{ width: "100%", gap: space.xl }}>
@@ -250,12 +244,8 @@ export default function Duel() {
     const cur = players[selectingPlayer];
     const list = playerCards[selectingPlayer] || [];
     return (
-      <Screen scroll={false} background={colors.ink50}>
-        <DuelHeader
-          title="カードモード"
-          subtitle={`Day${gameState.currentRound}`}
-          right={<Text style={styles.headerMeta}>{selectedCards.length}/{activeCount} 選択完了</Text>}
-        >
+      <Screen scroll={false} background={colors.ink50} edges={{ top: false, bottom: true }}>
+        <DuelHeader title="カード選択" subtitle={`${selectedCards.length}/${activeCount} 選択済み`}>
           <PlayerChips players={players} highlight={selectingPlayer} selectedIndices={selectedCards.map((s) => s.playerIndex)} />
         </DuelHeader>
 
@@ -284,7 +274,7 @@ export default function Duel() {
           ) : (
             <RevealedCard
               type={selectedType!}
-              note="このカードを覚えておいてください。全員がカードを選んだら、順番にエピソードを話します。"
+              note="このカードを覚えておいてください。全員が選んだら、自由な順番でエピソードを話します。"
               buttonLabel="次のプレイヤーへ"
               onNext={confirmCard}
             />
@@ -294,26 +284,24 @@ export default function Duel() {
     );
   }
 
-  // ---- エピソード発表 ----
+  // ---- エピソードタイム（順番は自由） ----
   if (phase === "episode") {
-    const idx = selectedCards.findIndex((sc) => sc.playerIndex === episodePlayer);
-    const isLast = idx === selectedCards.length - 1;
     return (
-      <Screen scroll={false} background={colors.ink50}>
-        <DuelHeader title="エピソード発表" subtitle={`${idx + 1} / ${selectedCards.length}`} />
+      <Screen scroll={false} background={colors.ink50} edges={{ top: false, bottom: true }}>
+        <DuelHeader title="エピソードタイム" subtitle={`Day${gameState.currentRound}`} />
         <ScrollView contentContainerStyle={styles.center} showsVerticalScrollIndicator={false}>
           <Animated.View entering={FadeInDown} style={{ width: "100%", gap: space.xl }}>
             <Card elevation="raised" style={{ alignItems: "center", paddingVertical: 28 }}>
               <IconBadge icon="acting" box={sizing.avatar} size={36} rounded="circle" bg={colors.ink900} />
-              <Text style={styles.bigName}>{players[episodePlayer].name}</Text>
-              <Text style={styles.subName}>がエピソードを話します</Text>
+              <Text style={styles.bigName}>順番は自由</Text>
+              <Text style={styles.subName}>それぞれエピソードを話そう</Text>
             </Card>
             <Card style={{ alignItems: "center" }}>
               <Text style={styles.miniThemeCat}>トピック</Text>
               <Text style={styles.topicLarge}>{currentTopic}</Text>
             </Card>
-            <InfoNote>{players[episodePlayer].name}さん、選んだカードに従ってエピソードを話してください。</InfoNote>
-            <AppButton label={isLast ? "ダウトタイムへ進む" : "次のプレイヤーへ"} onPress={nextEpisode} />
+            <InfoNote>選んだカードに従ってエピソードを話してください。{"\n"}人狼カード=嘘 / 村人カード=本当</InfoNote>
+            <AppButton label="ダウトタイムへ進む" onPress={startDoubt} />
           </Animated.View>
         </ScrollView>
       </Screen>
@@ -324,12 +312,8 @@ export default function Duel() {
   if (phase === "doubt") {
     const doubter = players[doubtingPlayer];
     return (
-      <Screen scroll={false} background={colors.ink50}>
-        <DuelHeader
-          title="ダウトタイム"
-          subtitle="誰かをダウトしますか？"
-          right={<Text style={styles.headerMeta}>{doubtingPlayer + 1}/{activeCount}</Text>}
-        >
+      <Screen scroll={false} background={colors.ink50} edges={{ top: false, bottom: true }}>
+        <DuelHeader title="ダウトタイム" subtitle={`${doubtingPlayer + 1}/${activeCount}人目`}>
           <PlayerChips players={players} highlight={doubtingPlayer} hideFinished />
         </DuelHeader>
 
@@ -368,7 +352,7 @@ export default function Duel() {
     // 全員パス
     if (doubtResult?.doubterIndex === null) {
       return (
-        <Screen scroll={false} background={colors.ink50}>
+        <Screen scroll={false} background={colors.ink50} edges={{ top: false, bottom: true }}>
           <DuelHeader title="カード公開" subtitle="全員パス" />
           <ScrollView contentContainerStyle={styles.center} showsVerticalScrollIndicator={false}>
             <Text style={styles.revealHead}>今回出したカード</Text>
@@ -392,7 +376,7 @@ export default function Duel() {
     const success = !!doubtResult?.isSuccess;
 
     return (
-      <Screen scroll={false} background={colors.ink50}>
+      <Screen scroll={false} background={colors.ink50} edges={{ top: false, bottom: true }}>
         <DuelHeader title="カード公開" subtitle={`${doubterPlayer.name} が ${targetPlayer.name} をダウト！`} />
         <ScrollView contentContainerStyle={styles.center} showsVerticalScrollIndicator={false}>
           <Animated.View entering={FadeIn} style={{ width: "100%", gap: space.xl }}>
@@ -444,8 +428,8 @@ export default function Duel() {
   // ---- 結果 ----
   if (phase === "result") {
     return (
-      <Screen scroll={false} background={colors.ink50}>
-        <DuelHeader title="ゲーム終了！" subtitle="" hero right={<GameControls mode="card" showRules={false} />} />
+      <Screen scroll={false} background={colors.ink50} edges={{ top: false, bottom: true }}>
+        <DuelHeader title="ゲーム終了！" subtitle="" hero />
         <ScrollView contentContainerStyle={styles.center} showsVerticalScrollIndicator={false}>
           <Animated.View entering={FadeIn} style={{ width: "100%", gap: space.xl }}>
             <Card elevation="raised" style={{ alignItems: "center", paddingVertical: 36, borderWidth: 4, borderColor: colors.ink300 }}>
@@ -484,13 +468,11 @@ export default function Duel() {
 function DuelHeader({
   title,
   subtitle,
-  right,
   children,
   hero,
 }: {
   title: string;
   subtitle: string;
-  right?: ReactNode;
   children?: ReactNode;
   hero?: boolean;
 }) {
@@ -498,15 +480,19 @@ function DuelHeader({
   return (
     <View style={[styles.dHeader, { paddingTop: insets.top + space.sm }, hero && { paddingTop: insets.top + space.xl, paddingBottom: space.xl, alignItems: "center" }]}>
       <View style={styles.dHeaderRow}>
-        <View style={hero ? { alignItems: "center" } : undefined}>
+        <View style={hero ? { alignItems: "center" } : { flexShrink: 1 }}>
           {hero && <Icon name="trophy" size={48} color={colors.white} />}
           <Text style={[styles.dTitle, hero && { fontSize: 24, marginTop: space.sm }]}>{title}</Text>
           {!!subtitle && <Text style={styles.dSub}>{subtitle}</Text>}
         </View>
-        {right && !hero && right}
-        {!right && !hero && <GameControls mode="card" />}
+        {/* やめる(✕)/ルールは全フェーズで常時表示（通常モードと揃える） */}
+        {!hero && <GameControls mode="card" />}
       </View>
-      {hero && right ? <View style={styles.heroRight}>{right}</View> : null}
+      {hero && (
+        <View style={styles.heroRight}>
+          <GameControls mode="card" showRules={false} />
+        </View>
+      )}
       {children}
     </View>
   );
@@ -585,7 +571,6 @@ const styles = StyleSheet.create({
   dTitle: { fontSize: 18, fontWeight: "800", color: colors.white },
   dSub: { fontSize: 13, fontWeight: "700", color: "rgba(255,255,255,0.8)", marginTop: 2 },
   heroRight: { position: "absolute", right: space["2xl"] },
-  headerMeta: { color: colors.white, fontSize: 12, fontWeight: "700" },
 
   chipGrid: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
   pChip: { flexGrow: 1, flexBasis: "47%", backgroundColor: "rgba(255,255,255,0.1)", borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 8 },
