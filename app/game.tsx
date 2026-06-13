@@ -155,7 +155,7 @@ export default function Game() {
   const topic = state.currentTopic;
 
   return (
-    <Screen scroll={false} background={colors.ink50} avoidKeyboard>
+    <Screen scroll={false} background={colors.ink50} edges={{ top: false, bottom: true }} avoidKeyboard>
       <Header
         icon="wolf"
         title={`Day ${state.currentDay}`}

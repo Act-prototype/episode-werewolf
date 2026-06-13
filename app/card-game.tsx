@@ -218,7 +218,7 @@ export default function Duel() {
   // ---- テーマ発表 ----
   if (phase === "themeAnnouncement") {
     return (
-      <Screen scroll={false} background={colors.ink50} avoidKeyboard>
+      <Screen scroll={false} background={colors.ink50} edges={{ top: false, bottom: true }} avoidKeyboard>
         <DuelHeader title="カードモード" subtitle={`Day${gameState.currentRound}`} />
         <ScrollView contentContainerStyle={styles.center} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
           <Animated.View entering={FadeIn} style={{ width: "100%", gap: space.xl }}>
@@ -250,7 +250,7 @@ export default function Duel() {
     const cur = players[selectingPlayer];
     const list = playerCards[selectingPlayer] || [];
     return (
-      <Screen scroll={false} background={colors.ink50}>
+      <Screen scroll={false} background={colors.ink50} edges={{ top: false, bottom: true }}>
         <DuelHeader
           title="カードモード"
           subtitle={`Day${gameState.currentRound}`}
@@ -299,7 +299,7 @@ export default function Duel() {
     const idx = selectedCards.findIndex((sc) => sc.playerIndex === episodePlayer);
     const isLast = idx === selectedCards.length - 1;
     return (
-      <Screen scroll={false} background={colors.ink50}>
+      <Screen scroll={false} background={colors.ink50} edges={{ top: false, bottom: true }}>
         <DuelHeader title="エピソード発表" subtitle={`${idx + 1} / ${selectedCards.length}`} />
         <ScrollView contentContainerStyle={styles.center} showsVerticalScrollIndicator={false}>
           <Animated.View entering={FadeInDown} style={{ width: "100%", gap: space.xl }}>
@@ -324,7 +324,7 @@ export default function Duel() {
   if (phase === "doubt") {
     const doubter = players[doubtingPlayer];
     return (
-      <Screen scroll={false} background={colors.ink50}>
+      <Screen scroll={false} background={colors.ink50} edges={{ top: false, bottom: true }}>
         <DuelHeader
           title="ダウトタイム"
           subtitle="誰かをダウトしますか？"
@@ -368,7 +368,7 @@ export default function Duel() {
     // 全員パス
     if (doubtResult?.doubterIndex === null) {
       return (
-        <Screen scroll={false} background={colors.ink50}>
+        <Screen scroll={false} background={colors.ink50} edges={{ top: false, bottom: true }}>
           <DuelHeader title="カード公開" subtitle="全員パス" />
           <ScrollView contentContainerStyle={styles.center} showsVerticalScrollIndicator={false}>
             <Text style={styles.revealHead}>今回出したカード</Text>
@@ -392,7 +392,7 @@ export default function Duel() {
     const success = !!doubtResult?.isSuccess;
 
     return (
-      <Screen scroll={false} background={colors.ink50}>
+      <Screen scroll={false} background={colors.ink50} edges={{ top: false, bottom: true }}>
         <DuelHeader title="カード公開" subtitle={`${doubterPlayer.name} が ${targetPlayer.name} をダウト！`} />
         <ScrollView contentContainerStyle={styles.center} showsVerticalScrollIndicator={false}>
           <Animated.View entering={FadeIn} style={{ width: "100%", gap: space.xl }}>
@@ -444,7 +444,7 @@ export default function Duel() {
   // ---- 結果 ----
   if (phase === "result") {
     return (
-      <Screen scroll={false} background={colors.ink50}>
+      <Screen scroll={false} background={colors.ink50} edges={{ top: false, bottom: true }}>
         <DuelHeader title="ゲーム終了！" subtitle="" hero right={<GameControls mode="card" showRules={false} />} />
         <ScrollView contentContainerStyle={styles.center} showsVerticalScrollIndicator={false}>
           <Animated.View entering={FadeIn} style={{ width: "100%", gap: space.xl }}>
