@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { View, Text, TextInput, ScrollView, StyleSheet } from "react-native";
-import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
+import Animated, { FadeInDown, FadeIn, ZoomIn } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import { Screen } from "@/components/Screen";
 import { Header } from "@/components/Header";
@@ -11,6 +11,7 @@ import { AppButton } from "@/components/AppButton";
 import { PressableScale } from "@/components/PressableScale";
 import { InfoNote } from "@/components/InfoNote";
 import { GameControls } from "@/components/GameControls";
+import { Celebrate } from "@/components/Confetti";
 import { haptics } from "@/components/haptics";
 import { GameState, GamePhase } from "@/game/types";
 import { checkGameOver, eliminatePlayer } from "@/game/gameLogic";
@@ -167,22 +168,25 @@ export default function Game() {
         {/* ゲームオーバー */}
         {state.currentPhase === "gameOver" && (
           <Animated.View entering={FadeIn} style={{ gap: space.lg }}>
-            <Card style={{ alignItems: "center", paddingVertical: 36 }}>
-              <Icon name={state.winner === "人狼" ? "wolf" : "players"} size={64} color={state.winner === "人狼" ? colors.wolf : colors.villager} />
-              <Text style={styles.bigWin}>{state.winner}の勝利！</Text>
-              <Text style={styles.winSub}>
-                {state.winner === "人狼" ? "人狼が村を支配しました" : "村人が人狼を追放しました"}
-              </Text>
-            </Card>
+            <Animated.View entering={ZoomIn.springify().damping(14)}>
+              <Card style={{ alignItems: "center", paddingVertical: 36 }}>
+                <Icon name={state.winner === "人狼" ? "wolf" : "players"} size={64} color={state.winner === "人狼" ? colors.wolf : colors.villager} />
+                <Text style={styles.bigWin}>{state.winner}の勝利！</Text>
+                <Text style={styles.winSub}>
+                  {state.winner === "人狼" ? "人狼が村を支配しました" : "村人が人狼を追放しました"}
+                </Text>
+              </Card>
+            </Animated.View>
 
             <Card elevation="card">
               <Text style={styles.resultHead}>プレイヤー結果</Text>
               <View style={{ gap: space.sm }}>
-                {state.players.map((p) => {
+                {state.players.map((p, i) => {
                   const wolf = p.role === "人狼";
                   return (
-                    <View
+                    <Animated.View
                       key={p.id}
+                      entering={FadeInDown.delay(200 + i * 70)}
                       style={[styles.resultRow, { backgroundColor: wolf ? colors.wolfSurface : colors.villagerSurface, borderColor: wolf ? colors.wolfBorder : colors.villagerBorder }]}
                     >
                       <View style={styles.resultLeft}>
@@ -193,7 +197,7 @@ export default function Game() {
                         </View>
                       </View>
                       {!p.isAlive && <Icon name="skull" size={20} color={colors.ink400} />}
-                    </View>
+                    </Animated.View>
                   );
                 })}
               </View>
@@ -359,6 +363,16 @@ export default function Game() {
           </Card>
         )}
       </ScrollView>
+
+      {state.currentPhase === "gameOver" && (
+        <Celebrate
+          colors={
+            state.winner === "人狼"
+              ? [colors.wolf, colors.wolfDeep, "#fca5a5", "#fde68a", colors.white]
+              : [colors.villager, colors.villagerDeep, "#93c5fd", "#a7f3d0", colors.white]
+          }
+        />
+      )}
     </Screen>
   );
 }

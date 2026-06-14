@@ -1,7 +1,7 @@
 import { useEffect, useState, ReactNode } from "react";
 import { View, Text, TextInput, ScrollView, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInDown, ZoomIn } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import { Screen } from "@/components/Screen";
 import { Card } from "@/components/Card";
@@ -11,6 +11,7 @@ import { AppButton } from "@/components/AppButton";
 import { PressableScale } from "@/components/PressableScale";
 import { InfoNote } from "@/components/InfoNote";
 import { GameControls } from "@/components/GameControls";
+import { Celebrate } from "@/components/Confetti";
 import { haptics } from "@/components/haptics";
 import { getTopicForTheme } from "@/game/episodeThemes";
 import { generateAITheme } from "@/game/aiTheme";
@@ -432,11 +433,13 @@ export default function Duel() {
         <DuelHeader title="ゲーム終了！" subtitle="" hero />
         <ScrollView contentContainerStyle={styles.center} showsVerticalScrollIndicator={false}>
           <Animated.View entering={FadeIn} style={{ width: "100%", gap: space.xl }}>
-            <Card elevation="raised" style={{ alignItems: "center", paddingVertical: 36, borderWidth: 4, borderColor: colors.ink300 }}>
-              <Icon name="celebrate" size={56} color={colors.ink900} />
-              <Text style={styles.winnerName}>{gameState.winner}</Text>
-              <Text style={styles.winnerSub}>の勝利！</Text>
-            </Card>
+            <Animated.View entering={ZoomIn.springify().damping(14)}>
+              <Card elevation="raised" style={{ alignItems: "center", paddingVertical: 36, borderWidth: 4, borderColor: colors.ink300 }}>
+                <Icon name="celebrate" size={56} color={colors.ink900} />
+                <Text style={styles.winnerName}>{gameState.winner}</Text>
+                <Text style={styles.winnerSub}>の勝利！</Text>
+              </Card>
+            </Animated.View>
             <Card>
               <Text style={styles.statsHead}>ゲーム統計</Text>
               <View style={styles.statRow}>
@@ -444,18 +447,19 @@ export default function Duel() {
                 <Text style={styles.statVal}>Day{gameState.currentRound}</Text>
               </View>
               {players.map((p, i) => (
-                <View key={i} style={styles.statCard}>
+                <Animated.View key={i} entering={FadeInDown.delay(200 + i * 70)} style={styles.statCard}>
                   <Text style={styles.statName}>{p.name}</Text>
                   <View style={styles.statWolf}>
                     <Icon name="wolf" size={16} color={colors.wolf} />
                     <Text style={styles.statWolfText}>{p.werewolfCardsUsed}枚使用</Text>
                   </View>
-                </View>
+                </Animated.View>
               ))}
             </Card>
             <AppButton label="トップに戻る" icon="home" onPress={restart} />
           </Animated.View>
         </ScrollView>
+        <Celebrate colors={[colors.villager, colors.villagerDeep, "#fde68a", "#a7f3d0", "#c4b5fd", colors.white]} />
       </Screen>
     );
   }
