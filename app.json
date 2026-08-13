@@ -9,20 +9,23 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "backgroundColor": "#111827",
+      "backgroundColor": "#f6efe7",
       "resizeMode": "contain",
       "image": "./assets/icon.png"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.actprototype.episodewerewolf",
-      "runtimeVersion": { "policy": "sdkVersion" },
+      "bundleIdentifier": "com.episodewerewolf.app",
+      "runtimeVersion": "exposdk:54.0.0",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
-      "package": "com.actprototype.episodewerewolf",
+      "package": "com.episodewerewolf.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#111827"
+        "backgroundColor": "#f6efe7"
       },
       "runtimeVersion": {
         "policy": "appVersion"
@@ -38,7 +41,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#111827",
+          "backgroundColor": "#f6efe7",
           "image": "./assets/icon.png",
           "imageWidth": 160
         }

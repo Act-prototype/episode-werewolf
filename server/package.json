@@ -1,0 +1,4 @@
+{
+  "//": "server.js は ESM (import 構文) で書かれている。ルートの package.json に \"type\": \"module\" を足すと metro.config.js / babel.config.js (CommonJS) が壊れるため、server/ 配下だけに限定して宣言する。",
+  "type": "module"
+}
