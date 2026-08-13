@@ -1,24 +1,19 @@
 import { useEffect, useState } from "react";
-import { View, Text, StyleSheet } from "react-native";
-import Animated, {
-  FadeIn,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated";
+import { View, Text, Image, StyleSheet } from "react-native";
+import Animated, { FadeIn } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import { Screen } from "@/components/Screen";
-import { Card } from "@/components/Card";
-import { AppButton } from "@/components/AppButton";
 import { GameMenu } from "@/components/GameMenu";
-import { IconBadge } from "@/components/IconBadge";
-import { Icon } from "@/components/Icon";
-import { InfoNote } from "@/components/InfoNote";
+import { SketchButton } from "@/components/sketch/SketchButton";
+import { SketchFrame } from "@/components/sketch/SketchFrame";
+import { RoleArt } from "@/components/sketch/RoleArt";
 import { haptics } from "@/components/haptics";
 import { GameState } from "@/game/types";
 import { assignRoles } from "@/game/gameLogic";
 import { loadGameState, saveGameState } from "@/game/storage";
-import { colors, radius, space, sizing, type } from "@/theme/tokens";
+import { sketch } from "@/theme/sketchAssets";
+import { colors, space, type } from "@/theme/tokens";
+
 
 export default function RoleReveal() {
   const router = useRouter();
@@ -43,7 +38,6 @@ export default function RoleReveal() {
 
   const player = state.players[index];
   const isLast = index === state.players.length - 1;
-  const progress = ((index + 1) / state.players.length) * 100;
 
   const reveal = () => {
     haptics.reveal();
@@ -66,122 +60,68 @@ export default function RoleReveal() {
   };
 
   return (
-    <Screen scroll={false} background={colors.ink50}>
-      {/* プログレス */}
-      <View style={styles.progressWrap}>
-        <View style={styles.progressTop}>
-          <Text style={styles.progressLabel}>役割確認</Text>
-          <View style={styles.progressRight}>
-            <Text style={styles.progressLabel}>
-              {index + 1} / {state.players.length}
-            </Text>
-            <GameMenu mode="normal" showRules={false} />
-          </View>
-        </View>
-        <View style={styles.track}>
-          <ProgressFill percent={progress} />
-        </View>
+    <Screen scroll={false}>
+      <View style={styles.menu}>
+        <GameMenu mode="normal" showRules={false} />
       </View>
 
       <View style={styles.body}>
+        <Text style={styles.heading}>Who are you?</Text>
+
         {!revealed ? (
-          <Animated.View key="hidden" entering={FadeIn} style={{ gap: space["2xl"], width: "100%" }}>
-            <Card padded elevation="raised" style={{ alignItems: "center", paddingVertical: 32 }}>
-              <IconBadge icon="villager" box={sizing.avatar} size={36} rounded="circle" bg={colors.ink900} />
-              <Text style={styles.playerName}>{player.name}</Text>
-              <Text style={styles.turnHint}>あなたの番です</Text>
-            </Card>
-            <InfoNote>他のプレイヤーに見られないように{"\n"}あなたの役割を確認してください</InfoNote>
-            <AppButton label="役割を見る" icon="hide" size="lg" onPress={reveal} />
+          <Animated.View key="hidden" entering={FadeIn.duration(200)} style={styles.stack}>
+            <SketchFrame contentStyle={styles.frameContent}>
+              <Image source={sketch.humanSolid} style={styles.human} resizeMode="contain" />
+              <Text style={styles.name}>{player.name}のばん</Text>
+            </SketchFrame>
+
+            <Text style={styles.hint}>ほかのひとにみられないようにね</Text>
+
+            <SketchButton label="ワタシはだれ？" onPress={reveal} style={styles.button} />
           </Animated.View>
         ) : (
-          <FlipCard key="visible" role={player.role!} isLast={isLast} onNext={next} />
+          <Animated.View key="shown" entering={FadeIn.duration(260)} style={styles.stack}>
+            <SketchFrame contentStyle={styles.frameContent}>
+              <RoleArt role={player.role!} size={170} variant={player.id} />
+              <Text style={styles.name}>{player.role}</Text>
+            </SketchFrame>
+
+            <View style={styles.rules}>
+              {(player.role === "人狼"
+                ? ["うそのエピソードをはなす", "正体がバレないように演技", "村人と同数以上で勝ち"]
+                : ["ほんとうにあったハナシをはなす", "人狼をみつける", "全ての人狼を追放したら勝ち"]
+              ).map((line) => (
+                <Text key={line} style={styles.rule}>
+                  {line}
+                </Text>
+              ))}
+            </View>
+
+            <SketchButton
+              label={isLast ? "ゲームをはじめる" : "わかったよ..."}
+              onPress={next}
+              style={styles.button}
+            />
+          </Animated.View>
         )}
       </View>
     </Screen>
   );
 }
 
-function ProgressFill({ percent }: { percent: number }) {
-  const w = useSharedValue(0);
-  useEffect(() => {
-    w.value = withTiming(percent, { duration: 450 });
-  }, [percent]);
-  const style = useAnimatedStyle(() => ({ width: `${w.value}%` }));
-  return <Animated.View style={[styles.fill, style]} />;
-}
-
-function FlipCard({ role, isLast, onNext }: { role: "人狼" | "村人"; isLast: boolean; onNext: () => void }) {
-  const isWolf = role === "人狼";
-  const rot = useSharedValue(90);
-  useEffect(() => {
-    rot.value = withTiming(0, { duration: 520 });
-  }, []);
-  const flip = useAnimatedStyle(() => ({ transform: [{ perspective: 800 }, { rotateY: `${rot.value}deg` }] }));
-
-  const points = isWolf
-    ? [
-        { icon: "acting" as const, text: "嘘のエピソードを話す" },
-        { icon: "hide" as const, text: "正体がバレないように演技" },
-        { icon: "trophy" as const, text: "村人と同数以上で勝利" },
-      ]
-    : [
-        { icon: "theme" as const, text: "真実のエピソードを話す" },
-        { icon: "vote" as const, text: "議論と投票で人狼を探す" },
-        { icon: "trophy" as const, text: "全ての人狼を追放で勝利" },
-      ];
-
-  return (
-    <Animated.View entering={FadeIn} style={{ gap: space["2xl"], width: "100%" }}>
-      <Animated.View
-        style={[
-          styles.roleCard,
-          { backgroundColor: isWolf ? colors.wolf : colors.villager, borderColor: isWolf ? colors.wolfBorder : colors.villagerBorder },
-          flip,
-        ]}
-      >
-        <Icon name={isWolf ? "wolf" : "villager"} size={60} color={colors.white} />
-        <Text style={styles.roleName}>{role}</Text>
-        <Text style={styles.roleSub}>{isWolf ? "WEREWOLF" : "VILLAGER"}</Text>
-      </Animated.View>
-
-      <Card style={{ gap: space.md }}>
-        {points.map((p, i) => (
-          <View
-            key={i}
-            style={[styles.point, { backgroundColor: isWolf ? colors.wolfSurface : colors.villagerSurface, borderColor: isWolf ? colors.wolfBorder : colors.villagerBorder }]}
-          >
-            <Icon name={p.icon} size={24} color={isWolf ? colors.wolf : colors.villager} />
-            <Text style={styles.pointText}>{p.text}</Text>
-          </View>
-        ))}
-      </Card>
-
-      <AppButton
-        label={isLast ? "ゲーム開始" : "次のプレイヤーへ"}
-        icon={isLast ? "play" : "forward"}
-        iconTrailing
-        onPress={onNext}
-      />
-    </Animated.View>
-  );
-}
-
 const styles = StyleSheet.create({
-  progressWrap: { backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.ink200, paddingHorizontal: space["2xl"], paddingVertical: space.xl },
-  progressTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: space.md },
-  progressRight: { flexDirection: "row", alignItems: "center", gap: space.md },
-  progressLabel: { fontSize: 14, fontWeight: "800", color: colors.ink800 },
-  track: { height: 12, backgroundColor: colors.ink200, borderRadius: 999, overflow: "hidden" },
-  fill: { height: "100%", backgroundColor: colors.ink900, borderRadius: 999 },
+  menu: { position: "absolute", top: space["4xl"], right: space.xl, zIndex: 2 },
+  body: { flex: 1, paddingHorizontal: space["2xl"], paddingTop: 96 },
+  heading: { ...type.display, color: colors.ink, textAlign: "center" },
+  stack: { marginTop: space["3xl"], gap: space.xl },
 
-  body: { flex: 1, alignItems: "center", justifyContent: "center", padding: space.xl },
-  playerName: { fontSize: 26, fontWeight: "800", color: colors.ink800, marginTop: space.md, letterSpacing: -0.3 },
-  turnHint: { ...type.body, color: colors.ink500, marginTop: 4 },
+  frameContent: { alignItems: "center", paddingVertical: space.sm, gap: space.lg },
+  human: { width: 78, height: 138 },
+  name: { ...type.title, color: colors.ink, textAlign: "center" },
 
-  roleCard: { borderRadius: radius["2xl"], paddingVertical: 36, alignItems: "center", borderWidth: 3 },
-  roleName: { fontSize: 32, fontWeight: "800", color: colors.white, marginTop: space.sm },
-  roleSub: { fontSize: 13, fontWeight: "800", color: "rgba(255,255,255,0.9)", letterSpacing: 3, marginTop: 4 },
-  point: { flexDirection: "row", alignItems: "center", gap: space.lg, padding: space.lg, borderRadius: radius.md, borderWidth: 1 },
-  pointText: { fontSize: 14, fontWeight: "800", color: colors.ink800, flexShrink: 1 },
+  hint: { ...type.small, color: colors.inkSub, textAlign: "center" },
+  rules: { gap: space.xs, alignItems: "center" },
+  rule: { ...type.small, color: colors.inkSub, textAlign: "center" },
+
+  button: { marginTop: space.md },
 });

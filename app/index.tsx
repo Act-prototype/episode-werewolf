@@ -1,127 +1,105 @@
-import { useState } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import { Screen } from "@/components/Screen";
-import { Header } from "@/components/Header";
-import { Card } from "@/components/Card";
-import { IconBadge } from "@/components/IconBadge";
-import { Icon } from "@/components/Icon";
-import { AppButton } from "@/components/AppButton";
-import { PressableScale } from "@/components/PressableScale";
-import { colors, radius, space, type, sizing } from "@/theme/tokens";
-
-type Mode = "normal" | "card";
+import { SketchButton } from "@/components/sketch/SketchButton";
+import { SketchDivider } from "@/components/sketch/SketchDivider";
+import { SketchNumber } from "@/components/sketch/SketchNumber";
+import { colors, space, type } from "@/theme/tokens";
 
 export default function ModeSelection() {
   const router = useRouter();
-  const [expanded, setExpanded] = useState<Mode | null>("normal");
 
   return (
-    <Screen scroll background={colors.ink50} edges={{ top: false, bottom: true }} contentContainerStyle={{ paddingBottom: space["2xl"] }}>
-      <Header icon="wolf" title="エピソード人狼" subtitle="EPISODE WEREWOLF" variant="hero" />
-
-      <View style={styles.body}>
-        <Text style={styles.lead}>遊び方を選ぶ</Text>
-
-        <ModeCard
-          icon="players"
-          title="通常モード"
-          minLabel="3人以上"
-          tag="大人数向け"
-          summary="役職を配り、議論と投票で人狼を探す王道ルール。"
-          expanded={expanded === "normal"}
-          onToggle={() => setExpanded(expanded === "normal" ? null : "normal")}
-          onPlay={() => router.push("/setup-normal")}
-          flow={["テーマに沿ってエピソードを話す", "全員で議論する", "投票で人狼を1人追放", "勝敗がつくまで繰り返す"]}
-          playLabel="通常モードで遊ぶ"
+    <Screen
+      scroll
+      edges={{ top: true, bottom: true }}
+      contentContainerStyle={styles.content}
+    >
+      <Animated.View entering={FadeIn.duration(220)} style={styles.stack}>
+        <ModeBlock
+          title="NORMAL Mode"
+          subtitle="3人以上でプレイ"
+          flow={[
+            "テーマのエピソードを話す",
+            "みんなで誰が人狼か話し合う",
+            "人狼っぽい人を投票して追放",
+            "勝敗が決まるまで繰り返す",
+          ]}
+          buttonLabel="ノーマルモードでプレイ"
+          buttonVariant="blue"
+          onPress={() => router.push("/setup-normal")}
         />
 
-        <ModeCard
-          icon="card"
-          title="カードモード"
-          minLabel="2人以上"
-          tag="少人数でも"
-          summary="配られたカードの指示で話し、嘘を「ダウト」で見破る。"
-          expanded={expanded === "card"}
-          onToggle={() => setExpanded(expanded === "card" ? null : "card")}
-          onPlay={() => router.push("/setup-card")}
-          flow={["カードを1枚選んで話す", "怪しい人をダウトする", "外したら自分に+1枚", "先に手札を使い切れば勝ち"]}
-          playLabel="カードモードで遊ぶ"
+        <ModeBlock
+          title="CARD Mode"
+          subtitle="2人以上でプレイ"
+          flow={[
+            "カードを手札から選んで話す",
+            "怪しいエピソードを「ダウト」",
+            "外したら自分に+1枚",
+            "先に手札を使い切れば勝利",
+          ]}
+          buttonLabel="カードモードでプレイ"
+          buttonVariant="red"
+          onPress={() => router.push("/setup-card")}
         />
-      </View>
+      </Animated.View>
     </Screen>
   );
 }
 
-interface ModeCardProps {
-  icon: "players" | "card";
+interface ModeBlockProps {
   title: string;
-  minLabel: string;
-  tag: string;
-  summary: string;
-  expanded: boolean;
-  onToggle: () => void;
-  onPlay: () => void;
+  subtitle: string;
   flow: string[];
-  playLabel: string;
+  buttonLabel: string;
+  buttonVariant: "blue" | "red";
+  onPress: () => void;
 }
 
-function ModeCard(props: ModeCardProps) {
+/** モックの1モード分のかたまり: 見出し → 人数 → 罫線 → 手順 → ボタン */
+function ModeBlock({ title, subtitle, flow, buttonLabel, buttonVariant, onPress }: ModeBlockProps) {
   return (
-    <Card padded={false} elevation="card">
-      <PressableScale haptic onPress={props.onToggle} style={styles.head}>
-        <IconBadge icon={props.icon} box={sizing.heroIcon} size={28} />
-        <View style={{ flex: 1 }}>
-          <View style={styles.titleRow}>
-            <Text style={styles.title}>{props.title}</Text>
-            <View style={styles.tag}>
-              <Text style={styles.tagText}>{props.tag}</Text>
-            </View>
+    <View style={styles.block}>
+      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.subtitle}>{subtitle}</Text>
+      <SketchDivider weight="long" width={185} height={4} style={styles.rule} />
+
+      <View style={styles.flow}>
+        {flow.map((step, i) => (
+          <View key={i} style={styles.step}>
+            <SketchNumber value={i + 1} height={15} style={styles.stepNum} />
+            <Text style={styles.stepText}>{step}</Text>
           </View>
-          <Text style={styles.minLabel}>{props.minLabel}</Text>
-        </View>
-        <Icon name={props.expanded ? "expandLess" : "expandMore"} size={24} color={colors.ink400} />
-      </PressableScale>
+        ))}
+      </View>
 
-      {props.expanded && (
-        <Animated.View entering={FadeIn.duration(160)} style={styles.bodyExpand}>
-          <Text style={styles.summary}>{props.summary}</Text>
-
-          <View style={styles.flow}>
-            {props.flow.map((step, i) => (
-              <View key={i} style={styles.step}>
-                <View style={styles.stepNum}>
-                  <Text style={styles.stepNumText}>{i + 1}</Text>
-                </View>
-                <Text style={styles.stepText}>{step}</Text>
-              </View>
-            ))}
-          </View>
-
-          <AppButton label={props.playLabel} icon="play" iconTrailing onPress={props.onPlay} />
-        </Animated.View>
-      )}
-    </Card>
+      <SketchButton
+        label={buttonLabel}
+        variant={buttonVariant}
+        onPress={onPress}
+        style={styles.cta}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  body: { padding: space.xl, gap: space.md },
-  lead: { ...type.h1, color: colors.ink800, marginBottom: space.xs },
+  content: { paddingHorizontal: space["3xl"], paddingBottom: space["3xl"] },
+  stack: { gap: 56, paddingTop: space["3xl"] },
 
-  head: { padding: space.lg, flexDirection: "row", alignItems: "center", gap: space.md },
-  titleRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
-  title: { ...type.h2, color: colors.ink800 },
-  tag: { backgroundColor: colors.ink100, paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.full },
-  tagText: { ...type.caption, fontWeight: "800", color: colors.ink500, letterSpacing: 0 },
-  minLabel: { ...type.small, fontWeight: "700", color: colors.ink500, marginTop: 2 },
+  block: { alignItems: "stretch" },
+  title: { ...type.display, color: colors.ink, textAlign: "center" },
+  subtitle: { ...type.small, color: colors.ink, textAlign: "center", marginTop: space.xs },
+  rule: { alignSelf: "center", marginTop: space.md, marginBottom: space.xl },
 
-  bodyExpand: { paddingHorizontal: space.lg, paddingBottom: space.lg, gap: space.lg },
-  summary: { ...type.body, color: colors.ink600, lineHeight: 21 },
-  flow: { gap: space.sm },
+  flow: { gap: space.md, paddingLeft: space.md, marginBottom: space["2xl"] },
   step: { flexDirection: "row", alignItems: "center", gap: space.md },
-  stepNum: { width: 24, height: 24, borderRadius: radius.full, backgroundColor: colors.ink900, alignItems: "center", justifyContent: "center" },
-  stepNumText: { color: colors.white, fontSize: 12, fontWeight: "800" },
-  stepText: { ...type.body, color: colors.ink700, flex: 1 },
+  // 数字の幅は桁によって変わるので、テキストの開始位置を揃えるため固定幅を持たせる
+  stepNum: { width: 14, justifyContent: "flex-end" },
+  stepText: { ...type.body, color: colors.ink, flexShrink: 1 },
+
+  // モックのボタンは画面幅の7割弱。上限を効かせて広い端末でも伸びきらないようにする
+  cta: { alignSelf: "center", width: "100%", maxWidth: 300 },
 });

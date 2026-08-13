@@ -1,22 +1,27 @@
 import { useState } from "react";
-import { View, ScrollView, StyleSheet } from "react-native";
+import { View, Text, ScrollView, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { Screen } from "@/components/Screen";
-import { Header } from "@/components/Header";
-import { SectionCard, Pill } from "@/components/SectionCard";
-import { Stepper } from "@/components/Stepper";
 import { ThemePicker } from "@/components/ThemePicker";
 import { NameInputList } from "@/components/NameInputList";
-import { BottomBar } from "@/components/BottomBar";
-import { AppButton } from "@/components/AppButton";
 import { GameMenu } from "@/components/GameMenu";
+import { SketchButton } from "@/components/sketch/SketchButton";
+import { SketchDivider } from "@/components/sketch/SketchDivider";
+import { SketchFrame } from "@/components/sketch/SketchFrame";
+import { SketchStepper } from "@/components/sketch/SketchStepper";
 import { episodeThemes } from "@/game/episodeThemes";
 import { saveGameState } from "@/game/storage";
 import { GameState } from "@/game/types";
-import { colors, space } from "@/theme/tokens";
+import { colors, space, type } from "@/theme/tokens";
+
+const MAX_PLAYERS = 20;
+const MIN_PLAYERS = 3;
+/** 村人は最低2人残す（1人だと議論が成立しない） */
+const MIN_VILLAGERS = 2;
 
 export default function Setup() {
   const router = useRouter();
+  // 「プレイヤー」は参加者の総数。人狼はその内数（村人 = プレイヤー - 人狼）。
   const [playerCount, setPlayerCount] = useState(5);
   const [werewolfCount, setWerewolfCount] = useState(1);
   const [selectedTheme, setSelectedTheme] = useState(episodeThemes[0].category);
@@ -24,11 +29,15 @@ export default function Setup() {
     Array.from({ length: 5 }, (_, i) => `プレイヤー${i + 1}`)
   );
 
-  const updatePlayerCount = (next: number) => {
-    if (next < 3) return;
+  /** 人数が変わったら名前欄の数を合わせる（入力済みの名前は保持） */
+  const resizeNames = (total: number) =>
+    setNames((prev) => Array.from({ length: total }, (_, i) => prev[i] || `プレイヤー${i + 1}`));
+
+  const updatePlayers = (next: number) => {
     setPlayerCount(next);
-    setNames((prev) => Array.from({ length: next }, (_, i) => prev[i] || `プレイヤー${i + 1}`));
-    if (werewolfCount >= next - 1) setWerewolfCount(Math.max(1, Math.floor(next / 3)));
+    resizeNames(next);
+    // 人数を減らして村人が2人を切る場合は人狼も詰める
+    setWerewolfCount((w) => Math.min(w, Math.max(1, next - MIN_VILLAGERS)));
   };
 
   const handleName = (index: number, name: string) =>
@@ -36,9 +45,10 @@ export default function Setup() {
 
   const handleStart = async () => {
     const state: GameState = {
-      players: names.map((name, i) => ({
+      // 名前欄の数ではなくプレイヤー数を人数の正とする
+      players: Array.from({ length: playerCount }, (_, i) => ({
         id: i,
-        name,
+        name: names[i] || `プレイヤー${i + 1}`,
         role: null,
         isAlive: true,
         hasSeenRole: false,
@@ -58,44 +68,75 @@ export default function Setup() {
   };
 
   return (
-    <Screen scroll={false} edges={{ top: false, bottom: false }} avoidKeyboard>
-      <Header
-        icon="players"
-        title="通常モード"
-        subtitle="NORMAL MODE"
-        onBack={() => router.replace("/")}
-        right={<GameMenu mode="normal" showRules={false} />}
-      />
+    <Screen scroll={false} edges={{ top: true, bottom: true }} avoidKeyboard>
+      <View style={styles.menu}>
+        <GameMenu mode="normal" />
+      </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
-        <SectionCard icon="players" title="プレイヤー数" pill={<Pill>3人〜</Pill>}>
-          <Stepper value={playerCount} min={3} onChange={updatePlayerCount} />
-        </SectionCard>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+      >
+        <Text style={styles.heading}>SETTING</Text>
 
-        <SectionCard
-          icon="wolf"
-          title="人狼の数"
-          pill={<Pill icon="villager">村人 {playerCount - werewolfCount}人</Pill>}
-        >
-          <Stepper value={werewolfCount} min={1} max={playerCount - 2} onChange={setWerewolfCount} />
-        </SectionCard>
+        {/* 参加人数と人狼の数。上下のアーチで1つの囲みにする */}
+        <SketchFrame style={styles.section} contentStyle={styles.steppers}>
+          <SketchStepper
+            label="プレイヤー"
+            value={playerCount}
+            min={MIN_PLAYERS}
+            max={MAX_PLAYERS}
+            onChange={updatePlayers}
+          />
+          <SketchStepper
+            label="人狼"
+            value={werewolfCount}
+            min={1}
+            max={Math.max(1, playerCount - MIN_VILLAGERS)}
+            onChange={setWerewolfCount}
+          />
+        </SketchFrame>
 
-        <SectionCard icon="theme" title="エピソードテーマ">
+        <SketchFrame style={styles.section} contentStyle={styles.group}>
+          <SectionTitle label="エピソードテーマ" ruleWidth={161} />
           <ThemePicker selected={selectedTheme} onSelect={setSelectedTheme} />
-        </SectionCard>
+        </SketchFrame>
 
-        <SectionCard icon="players" title="プレイヤー名">
+        <SketchFrame style={styles.section} contentStyle={styles.group}>
+          <SectionTitle label="プレイヤー名" ruleWidth={116} />
           <NameInputList names={names} onChange={handleName} />
-        </SectionCard>
-      </ScrollView>
+        </SketchFrame>
 
-      <BottomBar>
-        <AppButton label="ゲームスタート" icon="play" iconTrailing onPress={handleStart} />
-      </BottomBar>
+        <SketchButton label="設定おわり" onPress={handleStart} style={styles.start} />
+      </ScrollView>
     </Screen>
   );
 }
 
+/** セクション見出し + 直下の手書き罫線 */
+function SectionTitle({ label, ruleWidth }: { label: string; ruleWidth: number }) {
+  return (
+    <View style={styles.sectionTitle}>
+      <Text style={styles.sectionLabel}>{label}</Text>
+      <SketchDivider weight="medium" width={ruleWidth} height={5} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  content: { padding: space.xl, gap: space.lg, backgroundColor: colors.ink50 },
+  menu: { position: "absolute", top: space.sm, right: space.xl, zIndex: 2 },
+  content: { paddingHorizontal: space.xl, paddingBottom: space["3xl"], gap: space["2xl"] },
+
+  heading: { ...type.display, color: colors.ink, textAlign: "center", marginTop: space["2xl"] },
+
+  section: {},
+  steppers: { paddingVertical: space.md, gap: space.xl },
+  group: { paddingVertical: space.md, gap: space.lg },
+
+  sectionTitle: { alignItems: "center", gap: space.xs },
+  sectionLabel: { ...type.h2, color: colors.ink },
+
+  start: { marginTop: space.md },
 });

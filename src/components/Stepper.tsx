@@ -1,10 +1,9 @@
-import { View, Text, StyleSheet } from "react-native";
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
-import { useEffect } from "react";
+import { Image, View, StyleSheet } from "react-native";
 import { PressableScale } from "./PressableScale";
-import { Icon } from "./Icon";
+import { SketchNumber } from "./sketch/SketchNumber";
 import { haptics } from "./haptics";
-import { colors, radius, shadow, sizing } from "@/theme/tokens";
+import { sketch } from "@/theme/sketchAssets";
+import { space } from "@/theme/tokens";
 
 interface Props {
   value: number;
@@ -13,17 +12,13 @@ interface Props {
   max?: number;
 }
 
-/** 大きな数字 + ＋/− の数量コントロール。Setup/CardSetup で共通利用。 */
+/**
+ * 数量コントロール。−／数字／＋ すべて手書き素材で組む。
+ * 素材のインクは小さいので、押しやすさはタップ領域（44pt）で確保する。
+ */
 export function Stepper({ value, onChange, min = -Infinity, max = Infinity }: Props) {
   const canDec = value > min;
   const canInc = value < max;
-  const pop = useSharedValue(1);
-  const numStyle = useAnimatedStyle(() => ({ transform: [{ scale: pop.value }] }));
-
-  useEffect(() => {
-    pop.value = 1.18;
-    pop.value = withSpring(1, { damping: 12, stiffness: 220 });
-  }, [value]);
 
   const step = (delta: number, allowed: boolean) => {
     if (!allowed) return;
@@ -33,48 +28,23 @@ export function Stepper({ value, onChange, min = -Infinity, max = Infinity }: Pr
 
   return (
     <View style={styles.row}>
-      <PressableScale
-        haptic={false}
-        disabled={!canDec}
-        onPress={() => step(-1, canDec)}
-        style={styles.btn}
-      >
-        <Icon name="remove" size={26} color={colors.white} />
+      <PressableScale haptic={false} disabled={!canDec} onPress={() => step(-1, canDec)} style={styles.hit}>
+        <Image source={sketch.stepperMinus} style={styles.minus} resizeMode="contain" />
       </PressableScale>
 
-      <Animated.View style={[styles.display, shadow.raised, numStyle]}>
-        <Text style={styles.value}>{value}</Text>
-      </Animated.View>
+      <SketchNumber value={value} height={38} style={styles.number} />
 
-      <PressableScale
-        haptic={false}
-        disabled={!canInc}
-        onPress={() => step(1, canInc)}
-        style={styles.btn}
-      >
-        <Icon name="add" size={26} color={colors.white} />
+      <PressableScale haptic={false} disabled={!canInc} onPress={() => step(1, canInc)} style={styles.hit}>
+        <Image source={sketch.stepperPlus} style={styles.plus} resizeMode="contain" />
       </PressableScale>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 24 },
-  btn: {
-    width: sizing.stepperBtn,
-    height: sizing.stepperBtn,
-    borderRadius: radius.lg,
-    backgroundColor: colors.ink800,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  display: {
-    width: sizing.stepperBox,
-    height: sizing.stepperBox,
-    borderRadius: radius["2xl"],
-    backgroundColor: colors.ink900,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  value: { color: colors.white, fontSize: 38, fontWeight: "800" },
+  row: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: space["2xl"] },
+  hit: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+  minus: { width: 24, height: 8 },
+  plus: { width: 20, height: 18 },
+  number: { minWidth: 30, justifyContent: "center" },
 });

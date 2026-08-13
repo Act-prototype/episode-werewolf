@@ -12,7 +12,10 @@ interface CardProps {
   padded?: boolean;
 }
 
-/** 白い角丸カード。Web版の rounded-3xl shadow-lg border 相当。 */
+/**
+ * 紙の上の面。手書き基調に合わせて影は使わず、細いインクの罫線だけで区切る。
+ * 手書きの囲みが必要な箇所は SketchFrame を直接使う。
+ */
 export function Card({
   children,
   style,
@@ -36,7 +39,7 @@ export function Card({
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: colors.white, borderRadius: radius["3xl"] },
+  card: { backgroundColor: "transparent", borderRadius: radius["3xl"] },
   padded: { padding: space.xl },
-  bordered: { borderWidth: 1, borderColor: colors.ink200 },
+  bordered: { borderWidth: 1, borderColor: colors.ink300 },
 });
