@@ -10,19 +10,22 @@
     "newArchEnabled": true,
     "runtimeVersion": { "policy": "sdkVersion" },
     "splash": {
-      "backgroundColor": "#111827",
+      "backgroundColor": "#f6efe7",
       "resizeMode": "contain",
       "image": "./assets/icon.png"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.actprototype.episodewerewolf"
+      "bundleIdentifier": "com.episodewerewolf.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
-      "package": "com.actprototype.episodewerewolf",
+      "package": "com.episodewerewolf.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#111827"
+        "backgroundColor": "#f6efe7"
       }
     },
     "web": {
@@ -35,7 +38,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#111827",
+          "backgroundColor": "#f6efe7",
           "image": "./assets/icon.png",
           "imageWidth": 160
         }

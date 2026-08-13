@@ -5,6 +5,10 @@ web-build/
 expo-env.d.ts
 
 # native
+# ネイティブプロジェクトはCNG（prebuild）で毎回生成する。
+# ios/ にはCapacitor時代の残骸があり、残すとEASがbareワークフローと誤検出する。
+/ios/
+/android/
 *.orig.*
 *.jks
 *.p8
@@ -14,5 +18,16 @@ expo-env.d.ts
 
 .DS_Store
 *.local
+
+# 手書き素材スライスの確認用出力（scripts/slice-sketch.py）
+assets/sketch/_probe/
+assets/sketch/_unnamed/
+
+# デザイン確認用のFigma書き出し（実装の参照専用。アプリには同梱しない）
+design/figma/
 .env
 episode_themes.csv
+
+# Python バイトコードキャッシュ（scripts/ の素材加工スクリプト用）
+__pycache__/
+*.pyc

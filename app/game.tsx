@@ -1,33 +1,40 @@
 import { useEffect, useState } from "react";
-import { View, Text, TextInput, ScrollView, StyleSheet } from "react-native";
-import Animated, { FadeInDown, FadeIn, ZoomIn } from "react-native-reanimated";
+import { View, Text, Image, ScrollView, StyleSheet } from "react-native";
+import Animated, { FadeIn } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import { Screen } from "@/components/Screen";
-import { Header } from "@/components/Header";
-import { Card } from "@/components/Card";
-import { IconBadge } from "@/components/IconBadge";
-import { Icon } from "@/components/Icon";
-import { AppButton } from "@/components/AppButton";
 import { PressableScale } from "@/components/PressableScale";
-import { InfoNote } from "@/components/InfoNote";
-import { GameControls } from "@/components/GameControls";
-import { Celebrate } from "@/components/Confetti";
+import { GameHeader } from "@/components/sketch/GameHeader";
+import { RoleArt } from "@/components/sketch/RoleArt";
+import { SketchButton } from "@/components/sketch/SketchButton";
+import { SketchClock } from "@/components/sketch/SketchClock";
+import { SketchDivider } from "@/components/sketch/SketchDivider";
+import { SketchFrame } from "@/components/sketch/SketchFrame";
+import { SketchQuote } from "@/components/sketch/SketchQuote";
+import { SketchStretch } from "@/components/sketch/SketchStretch";
+import { ThemeFrame } from "@/components/sketch/ThemeFrame";
+import { ThemePill } from "@/components/sketch/ThemePill";
+import { SketchOptionRow } from "@/components/sketch/SketchOptionRow";
+import { AiThemeBox } from "@/components/sketch/AiThemeBox";
 import { haptics } from "@/components/haptics";
-import { GameState, GamePhase } from "@/game/types";
+import { GameState, Player } from "@/game/types";
 import { checkGameOver, eliminatePlayer } from "@/game/gameLogic";
 import { getTopicForTheme } from "@/game/episodeThemes";
 import { generateAITheme } from "@/game/aiTheme";
+import { discussionQuote, episodeQuote, PEACEFUL_MORNING } from "@/game/quotes";
 import { loadGameState, saveGameState, clearGameState } from "@/game/storage";
-import { colors, radius, space } from "@/theme/tokens";
+import { sketch } from "@/theme/sketchAssets";
+import { colors, space, type } from "@/theme/tokens";
 
 const DISCUSSION_SECONDS = 180;
+/** 議論時間の上限。±ボタンで1分ずつ足し引きできる */
+const MAX_DISCUSSION_SECONDS = 30 * 60;
 
 export default function Game() {
   const router = useRouter();
   const [state, setState] = useState<GameState | null>(null);
   const [suspected, setSuspected] = useState<number[]>([]);
   const [skipExile, setSkipExile] = useState(false);
-  const [selectedNight, setSelectedNight] = useState<number | null>(null);
   const [time, setTime] = useState(DISCUSSION_SECONDS);
   const [timerOn, setTimerOn] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -132,14 +139,20 @@ export default function Game() {
     setSuspected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
-  const changeTopic = () => update({ ...state, currentTopic: getTopicForTheme(state.selectedTheme) });
+  const changeTopic = () =>
+    update({ ...state, currentTopic: getTopicForTheme(state.selectedTheme) });
 
   const genAI = async () => {
     if (generating) return;
     setGenerating(true);
     try {
-      const topic = await generateAITheme(state.selectedTheme, aiPrompt || undefined);
-      await update({ ...state, currentTopic: topic });
+      const generated = await generateAITheme({
+        category: state.selectedTheme,
+        // 「もっと面白く」のような相対的な指示に応えるため、今のお題も渡す
+        currentTopic: state.currentTopic?.topic,
+        customPrompt: aiPrompt || undefined,
+      });
+      await update({ ...state, currentTopic: generated });
       setAiPrompt("");
     } catch (e) {
       console.error("AI theme generation failed:", e);
@@ -154,333 +167,352 @@ export default function Game() {
   };
 
   const topic = state.currentTopic;
+  const eliminated =
+    state.eliminatedTonight !== null ? state.players[state.eliminatedTonight] : null;
+
+  // 勝敗発表の2グループ。役職未割当(null)はどちらにも入れない
+  const winners = state.players.filter((p) => p.role !== null && p.role === state.winner);
+  const losers = state.players.filter((p) => p.role !== null && p.role !== state.winner);
 
   return (
-    <Screen scroll={false} background={colors.ink50} edges={{ top: false, bottom: true }} avoidKeyboard>
-      <Header
-        icon="wolf"
-        title={`Day ${state.currentDay}`}
-        subtitle={`${alive.length}人生存`}
-        right={<GameControls mode="normal" />}
-      />
+    <Screen scroll={false} edges={{ top: false, bottom: true }} avoidKeyboard>
+      {/* 勝敗発表は「何日目」が意味を持たないので日付を出さない */}
+      <GameHeader day={state.currentPhase === "gameOver" ? undefined : state.currentDay} />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
-        {/* ゲームオーバー */}
-        {state.currentPhase === "gameOver" && (
-          <Animated.View entering={FadeIn} style={{ gap: space.lg }}>
-            <Animated.View entering={ZoomIn.springify().damping(14)}>
-              <Card style={{ alignItems: "center", paddingVertical: 36 }}>
-                <Icon name={state.winner === "人狼" ? "wolf" : "players"} size={64} color={state.winner === "人狼" ? colors.wolf : colors.villager} />
-                <Text style={styles.bigWin}>{state.winner}の勝利！</Text>
-                <Text style={styles.winSub}>
-                  {state.winner === "人狼" ? "人狼が村を支配しました" : "村人が人狼を追放しました"}
-                </Text>
-              </Card>
-            </Animated.View>
-
-            <Card elevation="card">
-              <Text style={styles.resultHead}>プレイヤー結果</Text>
-              <View style={{ gap: space.sm }}>
-                {state.players.map((p, i) => {
-                  const wolf = p.role === "人狼";
-                  return (
-                    <Animated.View
-                      key={p.id}
-                      entering={FadeInDown.delay(200 + i * 70)}
-                      style={[styles.resultRow, { backgroundColor: wolf ? colors.wolfSurface : colors.villagerSurface, borderColor: wolf ? colors.wolfBorder : colors.villagerBorder }]}
-                    >
-                      <View style={styles.resultLeft}>
-                        <Icon name={wolf ? "wolf" : "villager"} size={24} color={wolf ? colors.wolf : colors.villager} />
-                        <View>
-                          <Text style={styles.resultName}>{p.name}</Text>
-                          <Text style={styles.resultRole}>{p.role}</Text>
-                        </View>
-                      </View>
-                      {!p.isAlive && <Icon name="skull" size={20} color={colors.ink400} />}
-                    </Animated.View>
-                  );
-                })}
-              </View>
-            </Card>
-
-            <AppButton label="新しいゲームを始める" icon="home" onPress={restart} />
-          </Animated.View>
-        )}
-
-        {/* エピソード発表 */}
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+      >
+        {/* テーマ発表 */}
         {state.currentPhase === "episodeAnnouncement" && (
-          <Animated.View entering={FadeInDown} style={{ gap: space.lg }}>
-            <PhaseBanner icon="day" title={`Day${state.currentDay}`} subtitle="エピソードテーマ発表">
-              {state.eliminatedTonight !== null && (
-                <InfoNote tone="danger">
-                  {state.players[state.eliminatedTonight].name}さんが人狼に襲われました
-                </InfoNote>
-              )}
-              <View style={styles.themeBox}>
-                <View style={styles.themeTag}>
-                  <Text style={styles.themeTagText}>TODAY'S THEME</Text>
-                </View>
-                <Text style={styles.themeCategory}>{topic?.category}</Text>
-                <Text style={styles.themeTopic}>「{topic?.topic}」</Text>
-              </View>
-            </PhaseBanner>
+          <Animated.View entering={FadeIn.duration(220)} style={styles.stack}>
+            <Text style={styles.phaseTitle}>テーマ発表</Text>
 
-            <InfoNote>このテーマでエピソードを話そう{"\n"}人狼=嘘 / 村人=真実</InfoNote>
+            <ThemeFrame category={topic?.category} topic={topic?.topic} withCat />
 
-            <View style={styles.rowGap}>
-              <AppButton style={{ flex: 1 }} size="sm" variant="secondary" icon="refresh" label="テーマを変える" onPress={changeTopic} />
-              <AppButton style={{ flex: 1 }} size="sm" variant="ai" icon="theme" label="AIで生成" onPress={() => setShowAI(!showAI)} />
+            <View style={styles.pillRow}>
+              <ThemePill label="テーマを変更" onPress={changeTopic} />
+              <ThemePill label="AIでつくる" ai onPress={() => setShowAI(!showAI)} />
             </View>
 
             {showAI && (
-              <Card style={{ gap: space.md }} elevation="card">
-                <TextInput
-                  value={aiPrompt}
-                  onChangeText={setAiPrompt}
-                  placeholder="例: 食べ物に関するテーマ、もっと面白く"
-                  placeholderTextColor={colors.ink400}
-                  style={styles.aiInput}
-                />
-                <AppButton size="sm" loading={generating} icon="theme" label={generating ? "生成中..." : "AIで生成"} onPress={genAI} />
-              </Card>
+              <AiThemeBox
+                value={aiPrompt}
+                onChangeText={setAiPrompt}
+                onSubmit={genAI}
+                loading={generating}
+              />
             )}
 
-            <AppButton variant="outline" icon="rules" label="エピソードタイムへ" onPress={transition} />
-          </Animated.View>
-        )}
-
-        {/* エピソードタイム */}
-        {state.currentPhase === "episodeTime" && (
-          <Animated.View entering={FadeInDown} style={{ gap: space.lg }}>
-            <PhaseBanner icon="rules" title="エピソードタイム" subtitle="EPISODE TIME">
-              <ThemeMini category={topic?.category} topic={topic?.topic} />
-            </PhaseBanner>
-            <InfoNote>順番は自由！それぞれエピソードを話してください{"\n"}人狼=嘘のエピソード / 村人=本当のエピソード</InfoNote>
-            <AppButton variant="outline" icon="discussion" label="議論フェーズへ" onPress={transition} />
-          </Animated.View>
-        )}
-
-        {/* 議論 */}
-        {state.currentPhase === "discussion" && (
-          <Animated.View entering={FadeInDown} style={{ gap: space.lg }}>
-            <PhaseBanner
-              icon="discussion"
-              title="議論タイム"
-              subtitle="DISCUSSION"
-              trailing={
-                <View style={styles.timer}>
-                  <Text style={[styles.timerText, { color: time <= 30 ? colors.wolf : colors.ink800 }]}>{formatTime(time)}</Text>
+            <View style={styles.roster}>
+              {alive.map((p) => (
+                <View key={p.id} style={styles.rosterItem}>
+                  <Text style={styles.rosterName}>{p.name}</Text>
+                  <SketchDivider weight="fine" width={130} height={3} />
                 </View>
-              }
-            >
-              <ThemeMini category={topic?.category} topic={topic?.topic} />
-            </PhaseBanner>
-            <InfoNote>タイマー終了後、みんなで一斉に発表{"\n"}誰が人狼か推理してください</InfoNote>
-            <AppButton variant="outline" icon="vote" label="投票フェーズへ" onPress={transition} />
+              ))}
+            </View>
+
+            <SketchButton label="自分語りタイムへ" onPress={transition} style={styles.cta} />
           </Animated.View>
         )}
 
-        {/* 投票 */}
-        {state.currentPhase === "voting" && (
-          <Animated.View entering={FadeInDown} style={{ gap: space.lg }}>
-            <PhaseBanner icon="vote" title="投票タイム" subtitle="VOTING" />
-            <InfoNote>人狼だと疑われたプレイヤーを選択{"\n"}複数選択可能</InfoNote>
+        {/* 自分語りタイム */}
+        {state.currentPhase === "episodeTime" && (
+          <Animated.View entering={FadeIn.duration(220)} style={styles.stack}>
+            <Text style={styles.phaseTitle}>自分語りタイム</Text>
+            <Text style={styles.phaseLead}>順番は自由、それぞれのエピを語り合うのだ。</Text>
 
-            <Card elevation="card">
-              <Text style={styles.cardLabel}>疑われているプレイヤー</Text>
-              <View style={styles.grid2}>
-                {alive.map((p) => (
-                  <SelectChip
-                    key={p.id}
-                    label={p.name}
-                    active={suspected.includes(p.id)}
-                    onPress={() => {
-                      if (skipExile) setSkipExile(false);
-                      toggleSuspect(p.id);
-                    }}
-                  />
-                ))}
+            <ThemeFrame category={topic?.category} topic={topic?.topic} />
+
+            <Image source={sketch.artCampfire} style={styles.campfire} resizeMode="contain" />
+
+            <SketchQuote quote={episodeQuote(state.currentDay)} />
+
+            <SketchButton label="犯人探しタイムへ" onPress={transition} style={styles.cta} />
+          </Animated.View>
+        )}
+
+        {/* 犯人探しタイム */}
+        {state.currentPhase === "discussion" && (
+          <Animated.View entering={FadeIn.duration(220)} style={styles.stack}>
+            <Text style={styles.phaseTitle}>犯人探しタイム</Text>
+            <Text style={styles.phaseLead}>人狼は誰だ。</Text>
+
+            {/* 残り時間の左右で1分単位に足し引きする */}
+            <View style={styles.timerBlock}>
+              <View style={styles.timerRow}>
+                <TimeStep
+                  dir="minus"
+                  disabled={time < 60}
+                  onPress={() => setTime((t) => Math.max(0, t - 60))}
+                />
+                <Text style={[styles.timer, time <= 30 && { color: colors.wolf }]}>
+                  {formatTime(time)}
+                </Text>
+                <TimeStep
+                  dir="plus"
+                  disabled={time >= MAX_DISCUSSION_SECONDS}
+                  onPress={() => setTime((t) => Math.min(MAX_DISCUSSION_SECONDS, t + 60))}
+                />
               </View>
-            </Card>
+              <SketchDivider weight="medium" width={170} height={4} />
+            </View>
 
-            <Card elevation="card">
-              <PressableScale
+            {/* 針は1分で一周する。残り時間そのものではなく「時が流れている」表現 */}
+            <SketchClock size={250} running={timerOn} secondsPerTurn={60} style={styles.clock} />
+
+            <SketchQuote quote={discussionQuote(state.currentDay)} />
+
+            <SketchButton label="投票へ" onPress={transition} style={styles.cta} />
+          </Animated.View>
+        )}
+
+        {/* 裁きの時 */}
+        {state.currentPhase === "voting" && (
+          <Animated.View entering={FadeIn.duration(220)} style={styles.stack}>
+            <View style={styles.titleWithRule}>
+              <Text style={styles.phaseTitle}>裁きの時</Text>
+              <SketchDivider weight="fine" width={110} height={3} />
+            </View>
+            <Text style={styles.phaseLead}>人狼だと思うプレイヤーを選べ{"\n"}複数選択可能</Text>
+
+            <View style={styles.voteList}>
+              {alive.map((p) => (
+                <SketchOptionRow
+                  key={p.id}
+                  label={p.name}
+                  selected={suspected.includes(p.id)}
+                  onPress={() => {
+                    if (skipExile) setSkipExile(false);
+                    toggleSuspect(p.id);
+                  }}
+                />
+              ))}
+              <SketchOptionRow
+                label="今回は誰も追放しない"
+                selected={skipExile}
                 onPress={() => {
                   setSkipExile(!skipExile);
                   if (!skipExile) setSuspected([]);
                 }}
-                style={[styles.skipBtn, { backgroundColor: skipExile ? colors.ink700 : colors.ink100 }]}
-              >
-                <Icon name="handshake" size={20} color={skipExile ? colors.white : colors.ink700} />
-                <Text style={[styles.skipText, { color: skipExile ? colors.white : colors.ink700 }]}>今回は追放しない</Text>
-              </PressableScale>
-            </Card>
+              />
+            </View>
 
-            <AppButton label="投票結果を確定" disabled={!skipExile && suspected.length === 0} onPress={transition} />
+            <Text style={styles.phaseLead}>さあ、投票だ。</Text>
+
+            <SketchButton
+              label="結果発表へ"
+              onPress={transition}
+              disabled={!skipExile && suspected.length === 0}
+              style={styles.cta}
+            />
           </Animated.View>
         )}
 
-        {/* 投票結果 */}
+        {/* 結果発表 */}
         {state.currentPhase === "voteResult" && (
-          <Animated.View entering={FadeIn} style={{ gap: space.lg }}>
-            <Card style={{ alignItems: "center", paddingVertical: 36 }}>
-              <Icon name="balance" size={56} color={colors.ink700} />
-              <Text style={styles.resultBig}>投票結果</Text>
-              {state.eliminatedTonight !== null ? (
-                <View style={[styles.voteOutcome, { backgroundColor: colors.wolfSurface, borderColor: colors.wolfBorder }]}>
-                  <Text style={styles.elimName}>{state.players[state.eliminatedTonight].name}</Text>
-                  <Text style={styles.elimSub}>が追放されました</Text>
-                  <Icon name={state.players[state.eliminatedTonight].role === "人狼" ? "wolf" : "villager"} size={44} color={state.players[state.eliminatedTonight].role === "人狼" ? colors.wolf : colors.villager} />
-                  <Text style={styles.elimRole}>{state.players[state.eliminatedTonight].role}</Text>
+          <Animated.View entering={FadeIn.duration(260)} style={[styles.stack, styles.fill]}>
+            {eliminated ? (
+              <>
+                {/* 追放ありのときだけ「結果発表」の枠が出る（モック準拠） */}
+                <View style={styles.resultLabel}>
+                  <SketchStretch name="box" height={46} style={StyleSheet.absoluteFill} />
+                  <Text style={styles.resultLabelText}>結果発表</Text>
                 </View>
-              ) : (
-                <View style={[styles.voteOutcome, { backgroundColor: colors.ink50, borderColor: colors.ink300 }]}>
-                  <Text style={styles.elimName}>誰も追放されませんでした</Text>
-                  <Text style={styles.elimSub}>今回は様子を見ることにしました</Text>
-                  <Icon name="handshake" size={44} color={colors.ink500} />
-                </View>
-              )}
-            </Card>
-            <AppButton label="次へ進む" icon="forward" iconTrailing onPress={transition} />
+
+                <Text style={styles.elimName}>{eliminated.name}が追放....</Text>
+                <RoleArt
+                  role={eliminated.role === "人狼" ? "人狼" : "村人"}
+                  size={210}
+                  variant={eliminated.id}
+                  style={styles.elimArt}
+                />
+
+                <View style={styles.spacer} />
+
+                <Text style={styles.verdict}>
+                  こいつは
+                  <Text
+                    style={{ color: eliminated.role === "人狼" ? colors.wolf : colors.villager }}
+                  >
+                    【{eliminated.role}】
+                  </Text>
+                  だった
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.morning}>{PEACEFUL_MORNING}</Text>
+                <Image source={sketch.artDawnHill} style={styles.dawn} resizeMode="contain" />
+
+                <View style={styles.spacer} />
+
+                <Text style={styles.noVerdict}>昨夜は誰も裁かれなかった...</Text>
+              </>
+            )}
+
+            <SketchButton label="次へ" onPress={transition} style={styles.cta} />
           </Animated.View>
         )}
 
-        {/* プレイヤーステータス */}
-        {state.currentPhase !== "gameOver" && (
-          <Card elevation="card" style={{ marginTop: space.lg }}>
-            <View style={styles.statusHead}>
-              <Icon name="players" size={20} color={colors.ink700} />
-              <Text style={styles.cardLabel}>プレイヤー（{alive.length}人生存）</Text>
-            </View>
-            <View style={styles.grid2}>
-              {state.players.map((p) => (
-                <View key={p.id} style={[styles.statusChip, !p.isAlive && { opacity: 0.5 }]}>
-                  <Text style={styles.statusName} numberOfLines={1}>{p.name}</Text>
-                  {!p.isAlive && <Icon name="skull" size={16} color={colors.ink400} />}
-                </View>
-              ))}
-            </View>
-          </Card>
+        {/* 勝敗発表 */}
+        {state.currentPhase === "gameOver" && (
+          <Animated.View entering={FadeIn} style={styles.stack}>
+            <Image
+              source={state.winner === "人狼" ? sketch.resultWolfWin : sketch.resultVillagerWin}
+              style={styles.verdictArt}
+              resizeMode="contain"
+            />
+
+            {/* 勝者は上下の手書きアーチで囲う */}
+            <SketchFrame style={styles.fullWidth} contentStyle={styles.winnerFrameInner}>
+              <ResultGrid players={winners} />
+            </SketchFrame>
+
+            <Image source={sketch.resultMakeinu} style={styles.makeinuArt} resizeMode="contain" />
+            <ResultGrid players={losers} />
+
+            <SketchButton label="新しいゲームを始める" onPress={restart} style={styles.cta} />
+          </Animated.View>
         )}
       </ScrollView>
-
-      {state.currentPhase === "gameOver" && (
-        <Celebrate
-          colors={
-            state.winner === "人狼"
-              ? [colors.wolf, colors.wolfDeep, "#fca5a5", "#fde68a", colors.white]
-              : [colors.villager, colors.villagerDeep, "#93c5fd", "#a7f3d0", colors.white]
-          }
-        />
-      )}
     </Screen>
   );
 }
 
-function PhaseBanner({
-  icon,
-  title,
-  subtitle,
-  trailing,
-  children,
+/** 勝敗発表の役職イラストの高さ。最も横長のポメ(比0.99)でも列幅に余裕をもって収まる値 */
+const RESULT_ART_HEIGHT = 110;
+
+/**
+ * 勝敗発表の2列グリッド。役職イラストとプレイヤー名だけを並べる。
+ *
+ * イラストは役職ごとに縦横比が違う（チワワ0.69・ポメ0.99）ため、列幅を固定して
+ * contain で内側に収める。RoleArt が高さから算出する幅は style で上書きしている。
+ */
+function ResultGrid({ players }: { players: Player[] }) {
+  return (
+    <View style={styles.resultGrid}>
+      {players.map((p) => (
+        <View key={p.id} style={styles.resultCard}>
+          {p.role && (
+            <RoleArt
+              role={p.role}
+              size={RESULT_ART_HEIGHT}
+              variant={p.id}
+              style={styles.resultCardArt}
+            />
+          )}
+          <Text style={styles.resultCardName} numberOfLines={1}>
+            {p.name}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** 議論時間を1分単位で足し引きするボタン。手書きの＋／−素材を使う */
+function TimeStep({
+  dir,
+  disabled,
+  onPress,
 }: {
-  icon: any;
-  title: string;
-  subtitle: string;
-  trailing?: React.ReactNode;
-  children?: React.ReactNode;
+  dir: "plus" | "minus";
+  disabled?: boolean;
+  onPress: () => void;
 }) {
   return (
-    <View style={styles.banner}>
-      <View style={styles.bannerHead}>
-        <IconBadge icon={icon} box={48} size={26} bg="rgba(255,255,255,0.2)" color={colors.white} />
-        <View style={{ flex: 1 }}>
-          <Text style={styles.bannerTitle}>{title}</Text>
-          <Text style={styles.bannerSub}>{subtitle}</Text>
-        </View>
-        {trailing}
-      </View>
-      {children}
-    </View>
-  );
-}
-
-function ThemeMini({ category, topic }: { category?: string; topic?: string }) {
-  return (
-    <View style={styles.themeMini}>
-      <Text style={styles.themeMiniLabel}>THEME</Text>
-      <Text style={styles.themeMiniCat}>{category}</Text>
-      <Text style={styles.themeMiniTopic}>「{topic}」</Text>
-    </View>
-  );
-}
-
-function SelectChip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  return (
-    <PressableScale
-      haptic={false}
-      onPress={onPress}
-      style={[styles.selectChip, { backgroundColor: active ? colors.ink900 : colors.ink100 }]}
-    >
-      <Text style={[styles.selectChipText, { color: active ? colors.white : colors.ink700 }]} numberOfLines={1}>
-        {label}
-      </Text>
+    <PressableScale onPress={onPress} disabled={disabled} haptic={false} style={styles.timeStep}>
+      <Image
+        source={dir === "plus" ? sketch.stepperPlus : sketch.stepperMinus}
+        style={dir === "plus" ? styles.stepPlus : styles.stepMinus}
+        resizeMode="contain"
+      />
     </PressableScale>
   );
 }
 
-function formatTime(s: number): string {
-  const m = Math.floor(s / 60);
-  const r = s % 60;
-  return `${m}:${r.toString().padStart(2, "0")}`;
-}
+const formatTime = (sec: number) =>
+  `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
 
 const styles = StyleSheet.create({
-  content: { padding: space.xl, paddingBottom: space["3xl"] },
+  // 結果発表は締めの一文とボタンを下に寄せるため、内容を画面高まで伸ばせるようにする
+  content: { flexGrow: 1, paddingHorizontal: space.xl, paddingBottom: space["3xl"] },
+  stack: { alignItems: "center", gap: space.lg, paddingTop: space.xl },
+  fill: { flex: 1, width: "100%" },
+  spacer: { flex: 1, minHeight: space.xl },
 
-  banner: { backgroundColor: colors.ink900, borderRadius: radius["2xl"], padding: space.xl, gap: space.md },
-  bannerHead: { flexDirection: "row", alignItems: "center", gap: space.md },
-  bannerTitle: { fontSize: 18, fontWeight: "800", color: colors.white },
-  bannerSub: { fontSize: 11, fontWeight: "700", color: "rgba(255,255,255,0.85)", letterSpacing: 1 },
-  timer: { backgroundColor: "rgba(255,255,255,0.95)", paddingHorizontal: 14, paddingVertical: 6, borderRadius: radius.lg },
-  timerText: { fontSize: 20, fontWeight: "800" },
+  phaseTitle: { ...type.h2, color: colors.ink, textAlign: "center" },
+  phaseLead: { ...type.small, color: colors.inkSub, textAlign: "center", lineHeight: 20 },
+  titleWithRule: { alignItems: "center", gap: space.xs },
 
-  themeBox: { backgroundColor: colors.white, borderRadius: radius.lg, padding: space.lg, alignItems: "center" },
-  themeTag: { backgroundColor: colors.ink900, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999, marginBottom: space.sm },
-  themeTagText: { color: colors.white, fontSize: 10, fontWeight: "800", letterSpacing: 1 },
-  themeCategory: { fontSize: 17, fontWeight: "800", color: colors.ink800, marginBottom: 4 },
-  themeTopic: { fontSize: 15, fontWeight: "700", color: colors.ink700, textAlign: "center" },
+  // テーマ枠
+  // お題が主役。2行に折り返せる大きさに抑えてある（AI生成は最長15文字）
 
-  themeMini: { backgroundColor: colors.white, borderRadius: radius.xl, padding: space.lg },
-  themeMiniLabel: { fontSize: 11, fontWeight: "700", color: colors.ink500, marginBottom: 2 },
-  themeMiniCat: { fontSize: 16, fontWeight: "800", color: colors.ink800 },
-  themeMiniTopic: { fontSize: 14, fontWeight: "700", color: colors.ink700 },
 
-  rowGap: { flexDirection: "row", gap: space.sm },
-  aiInput: { height: 44, borderRadius: radius.md, borderWidth: 2, borderColor: colors.ink200, backgroundColor: colors.ink50, paddingHorizontal: 12, fontSize: 14, fontWeight: "500", color: colors.ink900 },
+  pillRow: { flexDirection: "row", gap: space.md },
 
-  bigWin: { fontSize: 24, fontWeight: "800", color: colors.ink800, marginTop: space.md },
-  winSub: { fontSize: 14, fontWeight: "500", color: colors.ink600, marginTop: 4 },
-  resultHead: { fontSize: 16, fontWeight: "800", color: colors.ink800, textAlign: "center", marginBottom: space.lg },
-  resultRow: { padding: space.lg, borderRadius: radius.md, borderWidth: 2, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  resultLeft: { flexDirection: "row", alignItems: "center", gap: space.md },
-  resultName: { fontSize: 15, fontWeight: "700", color: colors.ink800 },
-  resultRole: { fontSize: 12, fontWeight: "500", color: colors.ink500 },
 
-  cardLabel: { fontSize: 14, fontWeight: "800", color: colors.ink800, marginBottom: space.md },
-  grid2: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
-  selectChip: { flexGrow: 1, flexBasis: "47%", height: 46, borderRadius: radius.md, alignItems: "center", justifyContent: "center", paddingHorizontal: 8 },
-  selectChipText: { fontSize: 14, fontWeight: "700" },
-  skipBtn: { height: 48, borderRadius: radius.md, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: space.sm },
-  skipText: { fontSize: 14, fontWeight: "700" },
+  // 参加者一覧（テーマ発表）
+  roster: { alignItems: "center", gap: space.md, marginTop: space.sm },
+  rosterItem: { alignItems: "center", gap: 2 },
+  rosterName: { ...type.title, color: colors.ink },
 
-  resultBig: { fontSize: 22, fontWeight: "800", color: colors.ink800, marginVertical: space.md },
-  voteOutcome: { width: "100%", borderRadius: radius.xl, borderWidth: 2, padding: space.xl, alignItems: "center", gap: space.sm },
-  elimName: { fontSize: 22, fontWeight: "800", color: colors.ink800 },
-  elimSub: { fontSize: 15, fontWeight: "700", color: colors.ink600 },
-  elimRole: { fontSize: 18, fontWeight: "700", color: colors.ink700 },
+  campfire: { width: 200, height: 100, marginVertical: space.lg },
 
-  statusHead: { flexDirection: "row", alignItems: "center", gap: space.sm, marginBottom: space.md },
-  statusChip: { flexGrow: 1, flexBasis: "47%", flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: colors.ink100, borderWidth: 1, borderColor: colors.ink200, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10 },
-  statusName: { fontSize: 13, fontWeight: "700", color: colors.ink800, flexShrink: 1 },
+  // 犯人探しタイム
+  timerBlock: { alignItems: "center", gap: space.xs },
+  timerRow: { flexDirection: "row", alignItems: "center", gap: space.lg },
+  timer: { fontFamily: type.display.fontFamily, fontSize: 56, color: colors.ink },
+  clock: { marginTop: space.sm },
+  timeStep: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+  stepMinus: { width: 24, height: 8 },
+  stepPlus: { width: 20, height: 18 },
+
+  // 結果発表
+  resultLabel: {
+    width: "100%",
+    maxWidth: 330,
+    height: 46,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: space["2xl"],
+  },
+  resultLabelText: { ...type.title, color: colors.ink },
+  elimName: { ...type.title, color: colors.ink, marginTop: space["3xl"] },
+  elimArt: { marginVertical: space.sm },
+  verdict: { ...type.display, fontFamily: type.title.fontFamily, color: colors.ink, textAlign: "center" },
+  // 追放なしの締め文はモックでは役職開示より小さい
+  noVerdict: { ...type.title, color: colors.ink, textAlign: "center" },
+  // 朝の情景だけ明朝で組む
+  morning: { ...type.narration, color: colors.ink, textAlign: "center", lineHeight: 32, marginTop: space["4xl"] },
+  dawn: { width: "100%", height: 110, marginTop: space["2xl"] },
+
+  // 投票
+  voteList: { width: "100%", gap: space.md, marginTop: space.sm },
+
+  // 勝敗発表
+  fullWidth: { width: "100%" },
+  // 見出しは人狼(3.52)と村人(3.86)で縦横比が違うため、幅を揃えて高さは contain に委ねる
+  verdictArt: { width: 280, height: 80 },
+  // アーチ素材自体が余白を持つので内側の縦パディングは最小でよい
+  winnerFrameInner: { paddingVertical: space.sm },
+  makeinuArt: { width: 80, height: 29, marginTop: space.md },
+  resultGrid: {
+    width: "100%",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    columnGap: space["3xl"],
+    rowGap: space.xl,
+  },
+  // 38% + 32ptの間隔で、モック実測（カード107pt・間隔55pt・全幅268pt）にほぼ一致する
+  resultCard: { width: "38%", alignItems: "center", gap: space.md },
+  resultCardArt: { width: "100%" },
+  resultCardName: { ...type.small, color: colors.ink, textAlign: "center" },
+
+  cta: { width: "100%", maxWidth: 320, marginTop: space.xl },
 });

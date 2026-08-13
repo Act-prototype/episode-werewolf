@@ -9,11 +9,14 @@ import {
   Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { PaperBackground } from "./sketch/PaperBackground";
 import { colors, LAYOUT_MAX_WIDTH } from "@/theme/tokens";
 
 interface ScreenProps {
   children: ReactNode;
   background?: string;
+  /** 紙のテクスチャを背面に敷くか（既定 true） */
+  paper?: boolean;
   /** スクロール可能にするか（既定 false=固定レイアウト） */
   scroll?: boolean;
   contentContainerStyle?: StyleProp<ViewStyle>;
@@ -30,7 +33,8 @@ interface ScreenProps {
  */
 export function Screen({
   children,
-  background = colors.ink50,
+  background = colors.paper,
+  paper = true,
   scroll = false,
   contentContainerStyle,
   edges = { top: true, bottom: true },
@@ -60,6 +64,7 @@ export function Screen({
   return (
     <View style={[styles.root, { backgroundColor: background }]}>
       <View style={[styles.frame, { backgroundColor: background }]}>
+        {paper && <PaperBackground />}
         {avoidKeyboard ? (
           <KeyboardAvoidingView
             style={styles.fill}

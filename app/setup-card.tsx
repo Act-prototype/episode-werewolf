@@ -2,16 +2,21 @@ import { useState } from "react";
 import { View, Text, ScrollView, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { Screen } from "@/components/Screen";
-import { Header } from "@/components/Header";
-import { SectionCard, Pill } from "@/components/SectionCard";
-import { Stepper } from "@/components/Stepper";
 import { ThemePicker } from "@/components/ThemePicker";
 import { NameInputList } from "@/components/NameInputList";
-import { BottomBar } from "@/components/BottomBar";
-import { AppButton } from "@/components/AppButton";
+import { GameMenu } from "@/components/GameMenu";
+import { SketchButton } from "@/components/sketch/SketchButton";
+import { SketchDivider } from "@/components/sketch/SketchDivider";
+import { SketchFrame } from "@/components/sketch/SketchFrame";
+import { SketchStepper } from "@/components/sketch/SketchStepper";
 import { episodeThemes } from "@/game/episodeThemes";
 import { saveCardState } from "@/game/storage";
-import { colors, space } from "@/theme/tokens";
+import { colors, space, type } from "@/theme/tokens";
+
+const MIN_PLAYERS = 2;
+const MAX_PLAYERS = 12;
+const MIN_CARDS = 3;
+const MAX_CARDS = 8;
 
 export default function CardSetup() {
   const router = useRouter();
@@ -20,25 +25,23 @@ export default function CardSetup() {
   const [werewolfCardCount, setWerewolfCardCount] = useState(1);
   const [selectedTheme, setSelectedTheme] = useState(episodeThemes[0].category);
   const [names, setNames] = useState<string[]>(
-    Array.from({ length: 2 }, (_, i) => `プレイヤー${i + 1}`)
+    Array.from({ length: MIN_PLAYERS }, (_, i) => `プレイヤー${i + 1}`)
   );
 
   const totalCards = playerCount * cardsPerPlayer;
   const villagerCards = totalCards - werewolfCardCount;
 
-  const clampWolf = (total: number) => {
-    if (werewolfCardCount >= total) setWerewolfCardCount(Math.max(1, total - 1));
-  };
+  /** 人狼カードは全体より1枚以上少なくする（全部が人狼だとゲームにならない） */
+  const clampWolf = (total: number) =>
+    setWerewolfCardCount((w) => Math.min(w, Math.max(1, total - 1)));
 
   const updatePlayerCount = (next: number) => {
-    if (next < 2) return;
     setPlayerCount(next);
     setNames((prev) => Array.from({ length: next }, (_, i) => prev[i] || `プレイヤー${i + 1}`));
     clampWolf(next * cardsPerPlayer);
   };
 
   const updateCards = (next: number) => {
-    if (next < 3 || next > 8) return;
     setCardsPerPlayer(next);
     clampWolf(playerCount * next);
   };
@@ -48,7 +51,8 @@ export default function CardSetup() {
 
   const handleStart = async () => {
     await saveCardState({
-      playerNames: names,
+      // 名前欄の数ではなくプレイヤー数を人数の正とする
+      playerNames: Array.from({ length: playerCount }, (_, i) => names[i] || `プレイヤー${i + 1}`),
       cardsPerPlayer,
       werewolfCardCount,
       selectedTheme,
@@ -60,51 +64,87 @@ export default function CardSetup() {
   };
 
   return (
-    <Screen scroll={false} edges={{ top: false, bottom: false }} avoidKeyboard>
-      <Header
-        icon="card"
-        title="カードモード"
-        subtitle="CARD MODE"
-        onBack={() => router.replace("/")}
-      />
+    <Screen scroll={false} edges={{ top: true, bottom: true }} avoidKeyboard>
+      <View style={styles.menu}>
+        <GameMenu mode="card" />
+      </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
-        <SectionCard icon="players" title="プレイヤー数" pill={<Pill>2人〜</Pill>}>
-          <Stepper value={playerCount} min={2} onChange={updatePlayerCount} />
-        </SectionCard>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+      >
+        <Text style={styles.heading}>SETTING</Text>
+        <Text style={styles.mode}>CARD Mode</Text>
 
-        <SectionCard icon="cardBack" title="各プレイヤーのカード数">
-          <Stepper value={cardsPerPlayer} min={3} max={8} onChange={updateCards} />
-        </SectionCard>
-
-        <SectionCard
-          icon="wolf"
-          title="人狼カード数"
-          pill={<Pill icon="villager">村人 {villagerCards}枚</Pill>}
-        >
-          <Stepper value={werewolfCardCount} min={1} max={totalCards - 1} onChange={setWerewolfCardCount} />
+        <SketchFrame style={styles.section} contentStyle={styles.steppers}>
+          <SketchStepper
+            label="プレイヤー"
+            value={playerCount}
+            min={MIN_PLAYERS}
+            max={MAX_PLAYERS}
+            onChange={updatePlayerCount}
+          />
+          <SketchStepper
+            label="手札の枚数"
+            value={cardsPerPlayer}
+            min={MIN_CARDS}
+            max={MAX_CARDS}
+            onChange={updateCards}
+          />
+          <SketchStepper
+            label="人狼カード"
+            value={werewolfCardCount}
+            min={1}
+            max={Math.max(1, totalCards - 1)}
+            onChange={setWerewolfCardCount}
+          />
           <Text style={styles.summary}>
-            合計 {totalCards} 枚（村人 {villagerCards} 枚 + 人狼 {werewolfCardCount} 枚）
+            ぜんぶで {totalCards} 枚（村人 {villagerCards} ／ 人狼 {werewolfCardCount}）
           </Text>
-        </SectionCard>
+        </SketchFrame>
 
-        <SectionCard icon="theme" title="エピソードテーマ">
+        <SketchFrame style={styles.section} contentStyle={styles.group}>
+          <SectionTitle label="エピソードテーマ" ruleWidth={161} />
           <ThemePicker selected={selectedTheme} onSelect={setSelectedTheme} />
-        </SectionCard>
+        </SketchFrame>
 
-        <SectionCard icon="players" title="プレイヤー名">
+        <SketchFrame style={styles.section} contentStyle={styles.group}>
+          <SectionTitle label="プレイヤー名" ruleWidth={116} />
           <NameInputList names={names} onChange={handleName} />
-        </SectionCard>
-      </ScrollView>
+        </SketchFrame>
 
-      <BottomBar>
-        <AppButton label="ゲームスタート" icon="play" iconTrailing onPress={handleStart} />
-      </BottomBar>
+        <SketchButton label="設定おわり" onPress={handleStart} style={styles.start} />
+      </ScrollView>
     </Screen>
   );
 }
 
+/** セクション見出し + 直下の手書き罫線 */
+function SectionTitle({ label, ruleWidth }: { label: string; ruleWidth: number }) {
+  return (
+    <View style={styles.sectionTitle}>
+      <Text style={styles.sectionLabel}>{label}</Text>
+      <SketchDivider weight="medium" width={ruleWidth} height={5} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  content: { padding: space.xl, gap: space.lg, backgroundColor: colors.ink50 },
-  summary: { marginTop: space.lg, textAlign: "center", fontSize: 13, fontWeight: "700", color: colors.ink600 },
+  menu: { position: "absolute", top: space.sm, right: space.xl, zIndex: 2 },
+  content: { paddingHorizontal: space.xl, paddingBottom: space["3xl"], gap: space["2xl"] },
+
+  heading: { ...type.display, color: colors.ink, textAlign: "center", marginTop: space["2xl"] },
+  mode: { ...type.overlineEn, color: colors.inkSub, textAlign: "center", marginTop: -space.lg },
+
+  section: {},
+  steppers: { paddingVertical: space.md, gap: space.xl },
+  group: { paddingVertical: space.md, gap: space.lg },
+  summary: { ...type.small, color: colors.inkSub, textAlign: "center" },
+
+  sectionTitle: { alignItems: "center", gap: space.xs },
+  sectionLabel: { ...type.h2, color: colors.ink },
+
+  start: { marginTop: space.md },
 });

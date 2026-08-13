@@ -1,56 +1,80 @@
 /**
  * デザイントークン。
- * Web版のグレースケール基調（gray-900〜gray-50）+ 役職色（人狼=赤 / 村人=青）+
- * AIアクセント（バイオレット）を、プラットフォーム非依存の値として一元管理する。
+ * Figmaモック「人狼デザインモック」に合わせた紙＋インクの手描き基調。
+ * 色・サイズはFigmaの実測値、ボタン色は手書き素材から抽出した実測値を使う。
+ *
+ * 旧グレースケール基調のキー（ink900 など）は移行中の画面が参照しているため
+ * 新パレットへのエイリアスとして残している。新規実装では下の意味名を使う。
  */
 
 export const colors = {
-  // ベース（白〜濃いグレー）
-  white: "#ffffff",
-  ink900: "#111827",
-  ink800: "#1f2937",
-  ink700: "#374151",
-  ink600: "#4b5563",
-  ink500: "#6b7280",
-  ink400: "#9ca3af",
-  ink300: "#d1d5db",
-  ink200: "#e5e7eb",
-  ink100: "#f3f4f6",
-  ink50: "#f9fafb",
+  /** 紙の地色。背景テクスチャ assets/sketch/paper.jpg と同系 */
+  paper: "#f6efe7",
+  /** 紙より一段沈んだ面（入力欄の中など） */
+  paperDeep: "#efe8de",
+  /** 鉛筆・墨のインク色（本文・見出し） */
+  ink: "#151515",
+  /** 補足テキスト */
+  inkSub: "#676767",
+  /** さらに弱いテキスト・プレースホルダ */
+  inkFaint: "#a29a8f",
+  /** 黒ベタの上に乗る文字（紙色で抜く） */
+  onInk: "#f6efe7",
 
-  // 役職: 人狼（赤系）
-  wolf: "#dc2626",
-  wolfDeep: "#e11d48",
-  wolfSurface: "#fef2f2",
-  wolfBorder: "#fecaca",
-  wolfText: "#7f1d1d",
+  /** 役職: 人狼。カードモードの赤ボタン実測色 */
+  wolf: "#c84840",
+  /** 役職: 村人。ノーマルモードの青ボタン実測色 */
+  villager: "#3080c0",
 
-  // 役職: 村人（青系）
-  villager: "#2563eb",
-  villagerDeep: "#0891b2",
-  villagerSurface: "#eff6ff",
-  villagerBorder: "#bfdbfe",
-  villagerText: "#1e3a8a",
+  /** オーバーレイ */
+  scrim: "rgba(21,21,21,0.55)",
 
-  // AIアクセント（バイオレット）
-  aiSurface: "#ede9fe",
-  aiText: "#6d28d9",
-
-  // 状態色
-  successSurface: "#f0fdf4",
-  successBorder: "#22c55e",
-  successText: "#14532d",
-  dangerSurface: "#fef2f2",
-  dangerBorder: "#ef4444",
-  dangerText: "#7f1d1d",
-
-  // オーバーレイ
-  scrim: "rgba(0,0,0,0.55)",
+  // ── 以下は移行用エイリアス（新規実装では使わない） ──
+  white: "#f6efe7",
+  ink900: "#151515",
+  ink800: "#151515",
+  ink700: "#2b2b2b",
+  ink600: "#676767",
+  ink500: "#676767",
+  ink400: "#a29a8f",
+  ink300: "#c9c0b4",
+  ink200: "#ded5c8",
+  ink100: "#efe8de",
+  ink50: "#f6efe7",
+  wolfDeep: "#b13c35",
+  wolfSurface: "#f6efe7",
+  wolfBorder: "#c84840",
+  wolfText: "#151515",
+  villagerDeep: "#2a6fa8",
+  villagerSurface: "#f6efe7",
+  villagerBorder: "#3080c0",
+  villagerText: "#151515",
+  aiSurface: "#efe8de",
+  aiText: "#151515",
+  successSurface: "#f6efe7",
+  successBorder: "#151515",
+  successText: "#151515",
+  dangerSurface: "#f6efe7",
+  dangerBorder: "#c84840",
+  dangerText: "#151515",
 } as const;
 
-/** 役職グラデーション（expo-linear-gradient未使用のため、代表色を返す） */
+/** 役職の代表色 */
 export const roleColor = (role: "人狼" | "村人" | null) =>
   role === "人狼" ? colors.wolf : colors.villager;
+
+/**
+ * 読み込むフォント。
+ * 日本語はすべて Zen Kaku Gothic New Medium、英字見出しのみ Readex Pro Light。
+ * ウェイトはフォント側に焼き込まれているので fontWeight は指定しない
+ * （指定すると別フェイスへのフォールバックや合成ボールドが起きる）。
+ */
+export const fontFamily = {
+  jp: "ZenKakuGothicNew_500Medium",
+  en: "ReadexPro_300Light",
+  /** 情景の語り（結果発表の朝の描写）だけに使う明朝 */
+  mincho: "HinaMincho_400Regular",
+} as const;
 
 export const space = {
   xs: 4,
@@ -63,6 +87,7 @@ export const space = {
   "4xl": 40,
 } as const;
 
+/** 手書き素材が角丸を担うため、角丸は素材を使わない箇所の控えめな値のみ */
 export const radius = {
   md: 12,
   lg: 16,
@@ -72,60 +97,68 @@ export const radius = {
   full: 999,
 } as const;
 
-export const font = {
-  /** 見出しは極太、本文は太字基調（Web版の font-black / font-bold を踏襲） */
-  black: "800" as const,
-  bold: "700" as const,
-  medium: "500" as const,
-  regular: "400" as const,
-};
-
 /**
- * モバイル前提に引き直したタイポスケール。
- * 旧実装はWebの max-w-420 をそのまま持ち込み、見出し36/役職56など実機では過大だった。
- * ここを単一の基準とし、各画面は原則これを参照する。
+ * タイポスケール。Figmaの実測値ベース。
+ * トラッキングは日本語で4%（18pxなら+0.72px）。
  */
 export const type = {
-  /** ブランドロゴ的な最大見出し（トップのみ） */
-  display: { fontSize: 24, fontWeight: font.black, letterSpacing: -0.4 },
-  /** 画面の主役テキスト（プレイヤー名・役職名など） */
-  title: { fontSize: 22, fontWeight: font.black, letterSpacing: -0.3 },
-  h1: { fontSize: 20, fontWeight: font.black, letterSpacing: -0.2 },
-  h2: { fontSize: 17, fontWeight: font.black },
-  h3: { fontSize: 15, fontWeight: font.black },
-  body: { fontSize: 14, fontWeight: font.bold },
-  small: { fontSize: 13, fontWeight: font.medium },
-  caption: { fontSize: 11, fontWeight: font.bold, letterSpacing: 1 },
+  /** 画面見出し。Readex Pro Light（Who are you? / SETTING / NORMAL Mode） */
+  display: { fontFamily: fontFamily.en, fontSize: 25.6 },
+  /** やや小さい英字見出し */
+  displaySm: { fontFamily: fontFamily.en, fontSize: 21 },
+  /** 主役の日本語テキスト（プレイヤー名・役職名・ボタン文字） */
+  title: { fontFamily: fontFamily.jp, fontSize: 18, letterSpacing: 0.72 },
+  /** セクション見出し（エピソードテーマ / プレイヤー名） */
+  h2: { fontFamily: fontFamily.jp, fontSize: 17, letterSpacing: 0.68 },
+  /** 本文 */
+  body: { fontFamily: fontFamily.jp, fontSize: 14, letterSpacing: 0.56 },
+  /** 補足・箇条書き */
+  small: { fontFamily: fontFamily.jp, fontSize: 13, letterSpacing: 0.52 },
+  /** ごく小さいラベル */
+  caption: { fontFamily: fontFamily.jp, fontSize: 11, letterSpacing: 0.66 },
+
+  // ── 英字表記（モックでは英語はすべて Readex Pro） ──
+  /** Day1 / EPISODE TIME などの英字ラベル */
+  labelEn: { fontFamily: fontFamily.en, fontSize: 15 },
+  /** TODAY'S THEME / CARD MODE などの小さい英字（字間を開ける） */
+  overlineEn: { fontFamily: fontFamily.en, fontSize: 11, letterSpacing: 1.2 },
+
+  /** 情景の語り。明朝で組む一文（結果発表の朝の描写） */
+  narration: { fontFamily: fontFamily.mincho, fontSize: 20, letterSpacing: 0.4 },
+
+  // 移行用エイリアス
+  h1: { fontFamily: fontFamily.jp, fontSize: 18, letterSpacing: 0.72 },
+  h3: { fontFamily: fontFamily.jp, fontSize: 15, letterSpacing: 0.6 },
 } as const;
 
-/** 主要コントロールの基準サイズ（画面間で統一） */
+/** 主要コントロールの基準サイズ（Figmaの実測値） */
 export const sizing = {
-  buttonLg: 54,
-  buttonMd: 48,
-  buttonSm: 42,
+  /** 主ボタン 304x65 */
+  buttonLg: 65,
+  buttonMd: 52,
+  buttonSm: 44,
+  /** テーマ選択ピル 141x33 */
+  pill: 33,
+  /** 入力ボックス 278x50 */
+  box: 50,
   stepperBox: 76,
   stepperBtn: 50,
   heroIcon: 52,
   avatar: 72,
 } as const;
 
-/** iOS風の柔らかい影。Androidは elevation で近似。 */
+/**
+ * 紙の上のフラットな見た目なので影は使わない。
+ * 影が必要な箇所は手書きの影付き素材（pill-sm-shadow など）で表現する。
+ * 旧実装の参照を壊さないためキーは残す。
+ */
 export const shadow = {
-  card: {
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 4,
-  },
-  raised: {
-    shadowColor: "#000",
-    shadowOpacity: 0.18,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 10,
-  },
+  card: {},
+  raised: {},
 } as const;
 
-/** スマホUIをタブレット/Webでも中央寄せ・最大幅で見せる（Web版の max-w-[420px] 相当） */
+/** スマホUIをタブレット/Webでも中央寄せ・最大幅で見せる */
 export const LAYOUT_MAX_WIDTH = 480;
+
+/** Figmaのアートボード幅。手書き素材の寸法はこの幅を基準にしている */
+export const DESIGN_WIDTH = 393;

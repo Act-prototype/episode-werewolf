@@ -30,8 +30,8 @@ app.post('/api/generate-theme', async (req, res) => {
     return res.status(500).json({ error: 'OPENAI_API_KEY is not configured' });
   }
 
-  const { currentTheme, customPrompt } = req.body;
-  console.log('[generate-theme] Request:', { currentTheme, customPrompt });
+  const { currentTheme, currentTopic, customPrompt } = req.body;
+  console.log('[generate-theme] Request:', { currentTheme, currentTopic, customPrompt });
 
   const systemPrompt = `あなたはパーティーゲーム「エピソード人狼」のテーマ生成AIです。
 大人の友人同士で遊ぶゲームなので、プレイヤーのリクエストに柔軟に対応してください。
@@ -54,13 +54,27 @@ app.post('/api/generate-theme', async (req, res) => {
 
 必ず以下のJSON形式で返してください: {"category": "カテゴリ名", "topic": "具体的なトピック"}`;
 
+  // いま表示しているトピックを添える。これが無いと「もっと面白く」「短くして」の
+  // ような相対的なリクエストが何を基準にしているのか分からない。
+  const context = [];
+  if (currentTopic) context.push(`現在のトピック: 「${currentTopic}」`);
+  if (currentTheme && currentTheme !== 'シャッフル') {
+    context.push(`選択中のカテゴリ: 「${currentTheme}」`);
+  }
+  const contextBlock = context.length ? `${context.join('\n')}\n\n` : '';
+
   let userPrompt;
   if (customPrompt) {
-    userPrompt = `以下のリクエストに沿ったトピックを1つ生成してください: ${customPrompt}`;
+    userPrompt =
+      `${contextBlock}上記を踏まえ、次のリクエストに沿ったトピックを1つ生成してください: ${customPrompt}\n` +
+      `リクエストが現在のトピックへの修正指示（「もっと面白く」「短く」など）の場合は、` +
+      `現在のトピックを出発点にして作り直してください。`;
   } else if (currentTheme && currentTheme !== 'シャッフル') {
-    userPrompt = `「${currentTheme}」のカテゴリに関連する新しいトピックを1つ生成してください。`;
+    userPrompt =
+      `${contextBlock}「${currentTheme}」のカテゴリに関連する新しいトピックを1つ生成してください。` +
+      (currentTopic ? `現在のトピックとは違うものにしてください。` : '');
   } else {
-    userPrompt = `自由なカテゴリで面白いトピックを1つ生成してください。`;
+    userPrompt = `${contextBlock}自由なカテゴリで面白いトピックを1つ生成してください。`;
   }
 
   try {
@@ -99,7 +113,8 @@ app.post('/api/generate-theme', async (req, res) => {
   }
 });
 
-app.get('*', (req, res) => {
+// SPAフォールバック。Express 5 では '*' 単体は使えず、名前付きワイルドカードが要る。
+app.get('/*splat', (req, res) => {
   res.sendFile(join(webDir, 'index.html'));
 });
 
