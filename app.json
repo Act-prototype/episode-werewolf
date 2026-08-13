@@ -8,6 +8,7 @@
     "scheme": "episodewerewolf",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "runtimeVersion": { "policy": "sdkVersion" },
     "splash": {
       "backgroundColor": "#f6efe7",
       "resizeMode": "contain",
@@ -16,7 +17,6 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.episodewerewolf.app",
-      "runtimeVersion": "exposdk:54.0.0",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -26,9 +26,6 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#f6efe7"
-      },
-      "runtimeVersion": {
-        "policy": "appVersion"
       }
     },
     "web": {
