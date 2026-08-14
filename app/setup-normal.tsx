@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { View, Text, ScrollView, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { Screen } from "@/components/Screen";
@@ -10,7 +10,7 @@ import { SketchDivider } from "@/components/sketch/SketchDivider";
 import { SketchFrame } from "@/components/sketch/SketchFrame";
 import { SketchStepper } from "@/components/sketch/SketchStepper";
 import { episodeThemes } from "@/game/episodeThemes";
-import { saveGameState } from "@/game/storage";
+import { saveGameState, saveNormalSetup, loadNormalSetup } from "@/game/storage";
 import { GameState } from "@/game/types";
 import { colors, space, type } from "@/theme/tokens";
 
@@ -28,6 +28,21 @@ export default function Setup() {
   const [names, setNames] = useState<string[]>(
     Array.from({ length: 5 }, (_, i) => defaultPlayerName(i))
   );
+  // 前回の設定を読み終わるまで待つ。既定値を一瞬見せてから差し替わるのを避ける
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const saved = await loadNormalSetup();
+      if (saved) {
+        setPlayerCount(saved.playerCount);
+        setWerewolfCount(saved.werewolfCount);
+        setSelectedTheme(saved.selectedTheme);
+        setNames(saved.names);
+      }
+      setReady(true);
+    })();
+  }, []);
 
   /** 人数が変わったら名前欄の数を合わせる（入力済みの名前は保持） */
   const resizeNames = (total: number) =>
@@ -44,6 +59,9 @@ export default function Setup() {
     setNames((prev) => prev.map((n, i) => (i === index ? name : n)));
 
   const handleStart = async () => {
+    // ゲーム終了後にこの画面へ戻ったとき、同じ顔ぶれで続けられるよう設定を残す
+    await saveNormalSetup({ playerCount, werewolfCount, selectedTheme, names });
+
     const state: GameState = {
       // 名前欄の数ではなくプレイヤー数を人数の正とする
       players: Array.from({ length: playerCount }, (_, i) => ({
@@ -66,6 +84,8 @@ export default function Setup() {
     await saveGameState(state);
     router.push("/role-reveal");
   };
+
+  if (!ready) return <Screen>{null}</Screen>;
 
   return (
     <Screen scroll={false} edges={{ top: true, bottom: true }} avoidKeyboard>
