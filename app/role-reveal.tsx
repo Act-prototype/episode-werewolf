@@ -24,7 +24,7 @@ export default function RoleReveal() {
   useEffect(() => {
     (async () => {
       const saved = await loadGameState();
-      if (!saved) return router.replace("/");
+      if (!saved) return router.replace("/mode-select");
       if (!saved.players[0].role) {
         const roles = assignRoles(saved.players.length, saved.werewolfCount);
         saved.players = saved.players.map((p, i) => ({ ...p, role: roles[i] }));

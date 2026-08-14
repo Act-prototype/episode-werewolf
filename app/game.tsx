@@ -44,7 +44,7 @@ export default function Game() {
   useEffect(() => {
     (async () => {
       const saved = await loadGameState();
-      if (!saved) return router.replace("/");
+      if (!saved) return router.replace("/mode-select");
       if (!saved.currentTopic && saved.currentPhase === "episodeAnnouncement") {
         saved.currentTopic = getTopicForTheme(saved.selectedTheme);
         await saveGameState(saved);

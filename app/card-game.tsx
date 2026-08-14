@@ -69,7 +69,7 @@ export default function Duel() {
   useEffect(() => {
     (async () => {
       const state = await loadCardState();
-      if (!state) return router.replace("/");
+      if (!state) return router.replace("/mode-select");
       setGameState(state);
 
       const total = state.playerNames.length * state.cardsPerPlayer;
@@ -256,7 +256,7 @@ export default function Duel() {
 
   const restart = async () => {
     await clearCardState();
-    router.replace("/");
+    router.replace("/mode-select");
   };
 
   /** 進行画面の外枠。ヘッダーと余白を全フェーズで揃える */

@@ -31,7 +31,7 @@ export function GameMenu({ mode, showRules = true }: Props) {
   const goHome = async () => {
     await clearAll();
     setConfirm(false);
-    router.replace("/");
+    router.replace("/mode-select");
   };
 
   return (

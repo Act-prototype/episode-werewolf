@@ -1,105 +1,63 @@
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, Image, Pressable, StyleSheet } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import { Screen } from "@/components/Screen";
-import { SketchButton } from "@/components/sketch/SketchButton";
-import { SketchDivider } from "@/components/sketch/SketchDivider";
-import { SketchNumber } from "@/components/sketch/SketchNumber";
-import { colors, space, type } from "@/theme/tokens";
+import { haptics } from "@/components/haptics";
+import { colors, fontFamily, space, type } from "@/theme/tokens";
 
-export default function ModeSelection() {
+/**
+ * タイトル画面。画面のどこを触ってもモード選択へ進む。
+ *
+ * 絵は画面下端に幅いっぱいで置く（モックでは画面のちょうど下半分）。
+ * 上半分は余白比で組んであり、縦の短い端末でも詰まるだけで崩れない。
+ */
+export default function Title() {
   const router = useRouter();
 
-  return (
-    <Screen
-      scroll
-      edges={{ top: true, bottom: true }}
-      contentContainerStyle={styles.content}
-    >
-      <Animated.View entering={FadeIn.duration(220)} style={styles.stack}>
-        <ModeBlock
-          title="NORMAL Mode"
-          subtitle="3人以上でプレイ"
-          flow={[
-            "テーマのエピソードを話す",
-            "みんなで誰が人狼か話し合う",
-            "人狼っぽい人を投票して追放",
-            "勝敗が決まるまで繰り返す",
-          ]}
-          buttonLabel="ノーマルモードでプレイ"
-          buttonVariant="blue"
-          onPress={() => router.push("/setup-normal")}
-        />
+  const start = () => {
+    haptics.select();
+    router.push("/mode-select");
+  };
 
-        <ModeBlock
-          title="CARD Mode"
-          subtitle="2人以上でプレイ"
-          flow={[
-            "カードを手札から選んで話す",
-            "怪しいエピソードを「ダウト」",
-            "外したら自分に+1枚",
-            "先に手札を使い切れば勝利",
-          ]}
-          buttonLabel="カードモードでプレイ"
-          buttonVariant="red"
-          onPress={() => router.push("/setup-card")}
-        />
-      </Animated.View>
+  return (
+    <Screen scroll={false} edges={{ top: true, bottom: false }}>
+      <Pressable style={styles.fill} onPress={start} accessibilityRole="button">
+        <Animated.View entering={FadeIn.duration(400)} style={styles.fill}>
+          <View style={styles.upper}>
+            <View style={styles.spacerTop} />
+
+            <Text style={styles.title}>エピソード人狼</Text>
+            <Text style={styles.tagline}>〜この中に猫のふりをした犬がいる〜</Text>
+
+            <View style={styles.spacerMid} />
+            <Text style={styles.tap}>TAP to START</Text>
+          </View>
+
+          <Image
+            source={require("../assets/app_board.png")}
+            style={styles.board}
+            resizeMode="contain"
+          />
+        </Animated.View>
+      </Pressable>
     </Screen>
   );
 }
 
-interface ModeBlockProps {
-  title: string;
-  subtitle: string;
-  flow: string[];
-  buttonLabel: string;
-  buttonVariant: "blue" | "red";
-  onPress: () => void;
-}
-
-/** モックの1モード分のかたまり: 見出し → 人数 → 罫線 → 手順 → ボタン */
-function ModeBlock({ title, subtitle, flow, buttonLabel, buttonVariant, onPress }: ModeBlockProps) {
-  return (
-    <View style={styles.block}>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.subtitle}>{subtitle}</Text>
-      <SketchDivider weight="long" width={185} height={4} style={styles.rule} />
-
-      <View style={styles.flow}>
-        {flow.map((step, i) => (
-          <View key={i} style={styles.step}>
-            <SketchNumber value={i + 1} height={15} style={styles.stepNum} />
-            <Text style={styles.stepText}>{step}</Text>
-          </View>
-        ))}
-      </View>
-
-      <SketchButton
-        label={buttonLabel}
-        variant={buttonVariant}
-        onPress={onPress}
-        style={styles.cta}
-      />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: space["3xl"], paddingBottom: space["3xl"] },
-  stack: { gap: 56, paddingTop: space["3xl"] },
+  fill: { flex: 1 },
 
-  block: { alignItems: "stretch" },
-  title: { ...type.display, color: colors.ink, textAlign: "center" },
-  subtitle: { ...type.small, color: colors.ink, textAlign: "center", marginTop: space.xs },
-  rule: { alignSelf: "center", marginTop: space.md, marginBottom: space.xl },
+  upper: { flex: 1, alignItems: "center", paddingHorizontal: space.xl },
+  // モック実測の余白比（セーフエリア下から見出しまで117pt : 説明からTAPまで129pt）
+  spacerTop: { flex: 0.9 },
+  spacerMid: { flex: 1 },
 
-  flow: { gap: space.md, paddingLeft: space.md, marginBottom: space["2xl"] },
-  step: { flexDirection: "row", alignItems: "center", gap: space.md },
-  // 数字の幅は桁によって変わるので、テキストの開始位置を揃えるため固定幅を持たせる
-  stepNum: { width: 14, justifyContent: "flex-end" },
-  stepText: { ...type.body, color: colors.ink, flexShrink: 1 },
+  // 見出しはモック実測で字面の高さ40pt・全幅319pt。字送りは他のトークンと同じ 4%
+  title: { fontFamily: fontFamily.jp, fontSize: 44, letterSpacing: 1.76, color: colors.ink },
+  tagline: { ...type.small, color: colors.ink, marginTop: space.sm },
 
-  // モックのボタンは画面幅の7割弱。上限を効かせて広い端末でも伸びきらないようにする
-  cta: { alignSelf: "center", width: "100%", maxWidth: 300 },
+  tap: { ...type.displaySm, color: colors.inkSub, marginBottom: 36 },
+
+  // 400x436 の素材を幅いっぱいに。画面下端に接地させる
+  board: { width: "100%", aspectRatio: 400 / 436 },
 });

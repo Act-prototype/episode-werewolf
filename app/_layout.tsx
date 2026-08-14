@@ -47,6 +47,7 @@ export default function RootLayout() {
           }}
         >
           <Stack.Screen name="index" />
+          <Stack.Screen name="mode-select" />
           <Stack.Screen name="setup-normal" />
           <Stack.Screen name="setup-card" />
           <Stack.Screen name="role-reveal" options={{ gestureEnabled: false }} />
