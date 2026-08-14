@@ -2,6 +2,12 @@ name: EAS Update
 
 # main への push（PRマージ含む）ごとに OTA 更新を自動配信する。
 # Expo Go では「最近開いた」から再度開くだけで最新が反映される。
+#
+# 配信先ブランチは main 固定。eas.json の production プロファイルも channel: "main" を
+# 指定しており、チャンネルは同名ブランチへ自動で紐づく（channel "main" -> branch "main"）。
+# これにより TestFlight ビルドもこの更新を受け取る。
+# ここのブランチ名と production チャンネル名は必ず一致させること。ズレるとネイティブ
+# ビルドに OTA が一切届かなくなる（配信は成功しているように見えるので気付きにくい）。
 on:
   push:
     branches: [main]
