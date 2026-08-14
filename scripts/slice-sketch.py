@@ -252,6 +252,7 @@ ROLE_ART: dict[str, list[dict]] = {
         {"file": "pome.png", "name": "role-villager-pome"},
         {"file": "ragdoll.png", "name": "role-villager-ragdoll"},
         {"file": "scotish.png", "name": "role-villager-scotish"},
+        {"file": "ball_cat.png", "name": "role-villager-ballcat"},
     ],
 }
 
