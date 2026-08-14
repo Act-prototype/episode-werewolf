@@ -8,6 +8,20 @@ import { GameState } from "./types";
 
 const GAME_KEY = "gameState";
 const CARD_KEY = "cardState";
+const NORMAL_SETUP_KEY = "normalSetup";
+
+/**
+ * ノーマルモードの設定画面の内容。
+ *
+ * 進行中の状態(gameState)とは別に持つ。ゲームが終わっても設定は残したいが、
+ * gameState を残すと再開扱いになってしまうため。
+ */
+export interface NormalSetup {
+  playerCount: number;
+  werewolfCount: number;
+  selectedTheme: string;
+  names: string[];
+}
 
 export interface CardGameState {
   playerNames: string[];
@@ -45,6 +59,20 @@ export async function clearCardState(): Promise<void> {
   await AsyncStorage.removeItem(CARD_KEY);
 }
 
+export async function saveNormalSetup(setup: NormalSetup): Promise<void> {
+  await AsyncStorage.setItem(NORMAL_SETUP_KEY, JSON.stringify(setup));
+}
+
+export async function loadNormalSetup(): Promise<NormalSetup | null> {
+  const raw = await AsyncStorage.getItem(NORMAL_SETUP_KEY);
+  return raw ? (JSON.parse(raw) as NormalSetup) : null;
+}
+
+/**
+ * 進行中の状態だけを消す。normalSetup は意図的に残す。
+ * 顔ぶれは複数回の対戦をまたいで変わらないことが多く、やめるたびに
+ * 名前を入れ直させたくないため。
+ */
 export async function clearAll(): Promise<void> {
   await AsyncStorage.multiRemove([GAME_KEY, CARD_KEY]);
 }

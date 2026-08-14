@@ -162,8 +162,10 @@ export default function Game() {
   };
 
   const restart = async () => {
+    // 設定(normalSetup)は残す。同じ顔ぶれでもう1戦するのが普通なので、
+    // トップではなく設定画面に戻して人数・名前・テーマを引き継ぐ。
     await clearGameState();
-    router.replace("/");
+    router.replace("/setup-normal");
   };
 
   const topic = state.currentTopic;
