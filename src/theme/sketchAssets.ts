@@ -51,6 +51,7 @@ export const sketch = {
   resultMakeinu: require("../../assets/sketch/result-makeinu.png"),
   resultVillagerWin: require("../../assets/sketch/result-villager-win.png"),
   resultWolfWin: require("../../assets/sketch/result-wolf-win.png"),
+  roleVillagerBallcat: require("../../assets/sketch/role-villager-ballcat.png"),
   roleVillagerPome: require("../../assets/sketch/role-villager-pome.png"),
   roleVillagerRagdoll: require("../../assets/sketch/role-villager-ragdoll.png"),
   roleVillagerScotish: require("../../assets/sketch/role-villager-scotish.png"),
@@ -183,11 +184,12 @@ export type SketchSliceName = keyof typeof sketchSlices;
  */
 export const sketchRoleArt = {
   "人狼": [
-    { source: sketch.roleWolfChiwawa, width: 443, height: 640 },
+    { source: sketch.roleWolfChiwawa, width: 424, height: 640 },
   ],
   "村人": [
     { source: sketch.roleVillagerPome, width: 633, height: 640 },
-    { source: sketch.roleVillagerRagdoll, width: 445, height: 640 },
-    { source: sketch.roleVillagerScotish, width: 446, height: 640 },
+    { source: sketch.roleVillagerRagdoll, width: 431, height: 640 },
+    { source: sketch.roleVillagerScotish, width: 425, height: 640 },
+    { source: sketch.roleVillagerBallcat, width: 446, height: 640 },
   ],
 } as const;
