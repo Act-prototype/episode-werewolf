@@ -3,7 +3,7 @@ import { View, Text, ScrollView, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { Screen } from "@/components/Screen";
 import { ThemePicker } from "@/components/ThemePicker";
-import { NameInputList } from "@/components/NameInputList";
+import { NameInputList, defaultPlayerName } from "@/components/NameInputList";
 import { GameMenu } from "@/components/GameMenu";
 import { SketchButton } from "@/components/sketch/SketchButton";
 import { SketchDivider } from "@/components/sketch/SketchDivider";
@@ -26,12 +26,12 @@ export default function Setup() {
   const [werewolfCount, setWerewolfCount] = useState(1);
   const [selectedTheme, setSelectedTheme] = useState(episodeThemes[0].category);
   const [names, setNames] = useState<string[]>(
-    Array.from({ length: 5 }, (_, i) => `プレイヤー${i + 1}`)
+    Array.from({ length: 5 }, (_, i) => defaultPlayerName(i))
   );
 
   /** 人数が変わったら名前欄の数を合わせる（入力済みの名前は保持） */
   const resizeNames = (total: number) =>
-    setNames((prev) => Array.from({ length: total }, (_, i) => prev[i] || `プレイヤー${i + 1}`));
+    setNames((prev) => Array.from({ length: total }, (_, i) => prev[i] || defaultPlayerName(i)));
 
   const updatePlayers = (next: number) => {
     setPlayerCount(next);
@@ -48,7 +48,7 @@ export default function Setup() {
       // 名前欄の数ではなくプレイヤー数を人数の正とする
       players: Array.from({ length: playerCount }, (_, i) => ({
         id: i,
-        name: names[i] || `プレイヤー${i + 1}`,
+        name: names[i] || defaultPlayerName(i),
         role: null,
         isAlive: true,
         hasSeenRole: false,

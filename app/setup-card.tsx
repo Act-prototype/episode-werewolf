@@ -3,7 +3,7 @@ import { View, Text, ScrollView, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { Screen } from "@/components/Screen";
 import { ThemePicker } from "@/components/ThemePicker";
-import { NameInputList } from "@/components/NameInputList";
+import { NameInputList, defaultPlayerName } from "@/components/NameInputList";
 import { GameMenu } from "@/components/GameMenu";
 import { SketchButton } from "@/components/sketch/SketchButton";
 import { SketchDivider } from "@/components/sketch/SketchDivider";
@@ -25,7 +25,7 @@ export default function CardSetup() {
   const [werewolfCardCount, setWerewolfCardCount] = useState(1);
   const [selectedTheme, setSelectedTheme] = useState(episodeThemes[0].category);
   const [names, setNames] = useState<string[]>(
-    Array.from({ length: MIN_PLAYERS }, (_, i) => `プレイヤー${i + 1}`)
+    Array.from({ length: MIN_PLAYERS }, (_, i) => defaultPlayerName(i))
   );
 
   const totalCards = playerCount * cardsPerPlayer;
@@ -37,7 +37,7 @@ export default function CardSetup() {
 
   const updatePlayerCount = (next: number) => {
     setPlayerCount(next);
-    setNames((prev) => Array.from({ length: next }, (_, i) => prev[i] || `プレイヤー${i + 1}`));
+    setNames((prev) => Array.from({ length: next }, (_, i) => prev[i] || defaultPlayerName(i)));
     clampWolf(next * cardsPerPlayer);
   };
 
@@ -52,7 +52,7 @@ export default function CardSetup() {
   const handleStart = async () => {
     await saveCardState({
       // 名前欄の数ではなくプレイヤー数を人数の正とする
-      playerNames: Array.from({ length: playerCount }, (_, i) => names[i] || `プレイヤー${i + 1}`),
+      playerNames: Array.from({ length: playerCount }, (_, i) => names[i] || defaultPlayerName(i)),
       cardsPerPlayer,
       werewolfCardCount,
       selectedTheme,

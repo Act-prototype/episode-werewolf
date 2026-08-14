@@ -383,28 +383,20 @@ export default function Game() {
   );
 }
 
-/** 勝敗発表の役職イラストの高さ。最も横長のポメ(比0.99)でも列幅に余裕をもって収まる値 */
-const RESULT_ART_HEIGHT = 110;
-
 /**
- * 勝敗発表の2列グリッド。役職イラストとプレイヤー名だけを並べる。
+ * 勝敗発表の2列グリッド。役職イラストとプレイヤー名を並べる。
  *
- * イラストは役職ごとに縦横比が違う（チワワ0.69・ポメ0.99）ため、列幅を固定して
- * contain で内側に収める。RoleArt が高さから算出する幅は style で上書きしている。
+ * イラストは役職ごとに縦横比が違う（チワワ0.69・ポメ0.99）ので、枠の寸法は
+ * 揃えたうえで fill（contain）で内側に収める。横長の絵ほど小さく収まる。
  */
 function ResultGrid({ players }: { players: Player[] }) {
   return (
     <View style={styles.resultGrid}>
       {players.map((p) => (
         <View key={p.id} style={styles.resultCard}>
-          {p.role && (
-            <RoleArt
-              role={p.role}
-              size={RESULT_ART_HEIGHT}
-              variant={p.id}
-              style={styles.resultCardArt}
-            />
-          )}
+          <View style={styles.resultCardBox}>
+            {p.role && <RoleArt role={p.role} fill variant={p.id} />}
+          </View>
           <Text style={styles.resultCardName} numberOfLines={1}>
             {p.name}
           </Text>
@@ -506,12 +498,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "center",
-    columnGap: space["3xl"],
+    // モック実測の間隔55ptに合わせる（トークンの40では詰まりすぎる）
+    columnGap: 55,
     rowGap: space.xl,
   },
-  // 38% + 32ptの間隔で、モック実測（カード107pt・間隔55pt・全幅268pt）にほぼ一致する
-  resultCard: { width: "38%", alignItems: "center", gap: space.md },
-  resultCardArt: { width: "100%" },
+  // 34%は枠内側313ptに対し106pt。モック実測の107ptと一致する
+  resultCard: { width: "34%", alignItems: "center", gap: space.md },
+  // 枠はモック実測（107x132pt・線幅1.25pt）。手書き素材ではなく均一な細線
+  resultCardBox: {
+    width: "100%",
+    aspectRatio: 107 / 132,
+    borderWidth: 1.25,
+    borderColor: colors.ink,
+    padding: space.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   resultCardName: { ...type.small, color: colors.ink, textAlign: "center" },
 
   cta: { width: "100%", maxWidth: 320, marginTop: space.xl },
