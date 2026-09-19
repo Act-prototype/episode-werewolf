@@ -9,7 +9,8 @@ import { SketchButton } from "@/components/sketch/SketchButton";
 import { SketchDivider } from "@/components/sketch/SketchDivider";
 import { SketchFrame } from "@/components/sketch/SketchFrame";
 import { SketchStepper } from "@/components/sketch/SketchStepper";
-import { episodeThemes } from "@/game/episodeThemes";
+import { useTopicStore } from "@/game/TopicStore";
+import { episodeThemes, SHUFFLE_THEME } from "@/game/episodeThemes";
 import { saveCardState } from "@/game/storage";
 import { colors, space, type } from "@/theme/tokens";
 
@@ -20,6 +21,7 @@ const MAX_CARDS = 8;
 
 export default function CardSetup() {
   const router = useRouter();
+  const store = useTopicStore();
   const [playerCount, setPlayerCount] = useState(2);
   const [cardsPerPlayer, setCardsPerPlayer] = useState(4);
   const [werewolfCardCount, setWerewolfCardCount] = useState(1);
@@ -50,12 +52,14 @@ export default function CardSetup() {
     setNames((prev) => prev.map((n, i) => (i === index ? name : n)));
 
   const handleStart = async () => {
+    if (!store.ready) return;
+    const theme = selectedTheme === SHUFFLE_THEME || store.availableCategories.includes(selectedTheme) ? selectedTheme : episodeThemes[0].category;
     await saveCardState({
       // 名前欄の数ではなくプレイヤー数を人数の正とする
       playerNames: Array.from({ length: playerCount }, (_, i) => names[i] || defaultPlayerName(i)),
       cardsPerPlayer,
       werewolfCardCount,
-      selectedTheme,
+      selectedTheme: theme,
       currentPlayer: 0,
       currentRound: 1,
       winner: null,
@@ -115,7 +119,7 @@ export default function CardSetup() {
           <NameInputList names={names} onChange={handleName} />
         </SketchFrame>
 
-        <SketchButton label="設定おわり" onPress={handleStart} style={styles.start} />
+        <SketchButton label="設定おわり" disabled={!store.ready} onPress={handleStart} style={styles.start} />
       </ScrollView>
     </Screen>
   );

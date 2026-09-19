@@ -29,6 +29,7 @@ export interface GameState {
   players: Player[];
   werewolfCount: number;
   selectedTheme: string;
+  customTopic?: string;
   currentPhase: GamePhase;
   currentDay: number;
   currentTopic: EpisodeTopic | null;

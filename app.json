@@ -8,7 +8,9 @@
     "scheme": "episodewerewolf",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "runtimeVersion": { "policy": "sdkVersion" },
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
     "splash": {
       "backgroundColor": "#f6efe7",
       "resizeMode": "contain",

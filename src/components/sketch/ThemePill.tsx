@@ -6,16 +6,16 @@ import { colors, type } from "@/theme/tokens";
 interface Props {
   label: string;
   onPress: () => void;
-  /** キラキラ付きの素材を使う（AI生成用） */
+  /** キラキラ付きの素材を使う */
   ai?: boolean;
 }
 
-/** テーマ操作の小さいピル（テーマを変更 / AIでつくる）。 */
+/** テーマ操作の小さいピル（お題を変更 / 自分でつくる）。 */
 export function ThemePill({ label, onPress, ai }: Props) {
   return (
-    <PressableScale onPress={onPress} style={styles.pill}>
+    <PressableScale accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={styles.pill}>
       <SketchStretch name={ai ? "pillAi" : "pill"} height={32} style={StyleSheet.absoluteFill} />
-      {/* キラキラが左端に入るぶん、AIピルだけ文字を右へ寄せる */}
+      {/* キラキラが左端に入るぶん、装飾付きピルだけ文字を右へ寄せる */}
       <Text style={[styles.text, ai && { paddingLeft: 18 }]} numberOfLines={1}>
         {label}
       </Text>

@@ -13,14 +13,13 @@ import { SketchFrame } from "@/components/sketch/SketchFrame";
 import { SketchQuote } from "@/components/sketch/SketchQuote";
 import { SketchStretch } from "@/components/sketch/SketchStretch";
 import { ThemeFrame } from "@/components/sketch/ThemeFrame";
-import { ThemePill } from "@/components/sketch/ThemePill";
 import { SketchOptionRow } from "@/components/sketch/SketchOptionRow";
-import { AiThemeBox } from "@/components/sketch/AiThemeBox";
+import { GameThemeControls } from "@/components/GameThemeControls";
+import { useTopicStore } from "@/game/TopicStore";
 import { haptics } from "@/components/haptics";
 import { GameState, Player } from "@/game/types";
 import { checkGameOver, eliminatePlayer } from "@/game/gameLogic";
-import { getTopicForTheme } from "@/game/episodeThemes";
-import { generateAITheme } from "@/game/aiTheme";
+import { getTopicForTheme, CUSTOM_THEME } from "@/game/episodeThemes";
 import { discussionQuote, episodeQuote, PEACEFUL_MORNING } from "@/game/quotes";
 import { loadGameState, saveGameState, clearGameState } from "@/game/storage";
 import { sketch } from "@/theme/sketchAssets";
@@ -32,27 +31,29 @@ const MAX_DISCUSSION_SECONDS = 30 * 60;
 
 export default function Game() {
   const router = useRouter();
+  const { ready: libraryReady, availableCategories } = useTopicStore();
   const [state, setState] = useState<GameState | null>(null);
   const [suspected, setSuspected] = useState<number[]>([]);
   const [skipExile, setSkipExile] = useState(false);
   const [time, setTime] = useState(DISCUSSION_SECONDS);
   const [timerOn, setTimerOn] = useState(false);
-  const [generating, setGenerating] = useState(false);
-  const [aiPrompt, setAiPrompt] = useState("");
-  const [showAI, setShowAI] = useState(false);
 
   useEffect(() => {
+    if (!libraryReady) return;
     (async () => {
       const saved = await loadGameState();
       if (!saved) return router.replace("/mode-select");
-      if (!saved.currentTopic && saved.currentPhase === "episodeAnnouncement") {
-        saved.currentTopic = getTopicForTheme(saved.selectedTheme);
-        await saveGameState(saved);
+      if (saved.currentPhase === "episodeAnnouncement") {
+        const isAvailable = availableCategories.includes(saved.currentTopic?.category ?? "") || saved.currentTopic?.category === CUSTOM_THEME;
+        if (!saved.currentTopic || !isAvailable) {
+          saved.currentTopic = getTopicForTheme(saved.selectedTheme, availableCategories, saved.customTopic);
+          await saveGameState(saved);
+        }
       }
       if (saved.currentPhase === "discussion") setTimerOn(true);
       setState(saved);
     })();
-  }, []);
+  }, [libraryReady]);
 
   useEffect(() => {
     if (!timerOn || !state || state.currentPhase !== "discussion") return;
@@ -124,7 +125,7 @@ export default function Game() {
           haptics.success();
         } else {
           next.currentDay += 1;
-          next.currentTopic = getTopicForTheme(next.selectedTheme);
+          next.currentTopic = getTopicForTheme(next.selectedTheme, availableCategories, next.customTopic);
           next.currentPhase = "episodeAnnouncement";
         }
         next.eliminatedTonight = null;
@@ -140,26 +141,8 @@ export default function Game() {
   };
 
   const changeTopic = () =>
-    update({ ...state, currentTopic: getTopicForTheme(state.selectedTheme) });
+    update({ ...state, currentTopic: getTopicForTheme(state.selectedTheme, availableCategories, state.customTopic) });
 
-  const genAI = async () => {
-    if (generating) return;
-    setGenerating(true);
-    try {
-      const generated = await generateAITheme({
-        category: state.selectedTheme,
-        // 「もっと面白く」のような相対的な指示に応えるため、今のお題も渡す
-        currentTopic: state.currentTopic?.topic,
-        customPrompt: aiPrompt || undefined,
-      });
-      await update({ ...state, currentTopic: generated });
-      setAiPrompt("");
-    } catch (e) {
-      console.error("AI theme generation failed:", e);
-    } finally {
-      setGenerating(false);
-    }
-  };
 
   const restart = async () => {
     // 設定(normalSetup)は残す。同じ顔ぶれでもう1戦するのが普通なので、
@@ -194,19 +177,8 @@ export default function Game() {
 
             <ThemeFrame category={topic?.category} topic={topic?.topic} withCat />
 
-            <View style={styles.pillRow}>
-              <ThemePill label="テーマを変更" onPress={changeTopic} />
-              <ThemePill label="AIでつくる" ai onPress={() => setShowAI(!showAI)} />
-            </View>
-
-            {showAI && (
-              <AiThemeBox
-                value={aiPrompt}
-                onChangeText={setAiPrompt}
-                onSubmit={genAI}
-                loading={generating}
-              />
-            )}
+            <GameThemeControls selected={state.selectedTheme} customTopic={state.customTopic} onShuffle={changeTopic}
+              onChange={(category, customTopic, purchasedCategories) => update({ ...state, selectedTheme: category, customTopic, currentTopic: getTopicForTheme(category, purchasedCategories ?? availableCategories, customTopic) })} />
 
             <View style={styles.roster}>
               {alive.map((p) => (
@@ -444,7 +416,7 @@ const styles = StyleSheet.create({
   titleWithRule: { alignItems: "center", gap: space.xs },
 
   // テーマ枠
-  // お題が主役。2行に折り返せる大きさに抑えてある（AI生成は最長15文字）
+  // お題が主役。2行に折り返せる大きさに抑えてある（任意作成は最長40文字）
 
 
   pillRow: { flexDirection: "row", gap: space.md },

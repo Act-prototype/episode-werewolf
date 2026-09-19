@@ -58,7 +58,7 @@ export function AppButton({
   return (
     // 幅やmarginは外側のViewで受ける（PressableScaleのstyleは内側のViewに渡るため）
     <View style={style}>
-      <PressableScale onPress={onPress} disabled={isDisabled} haptic={haptic} style={{ height: h }}>
+      <PressableScale accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: isDisabled }} onPress={onPress} disabled={isDisabled} haptic={haptic} style={{ height: h }}>
         <SketchStretch name={v.slice} height={h} style={StyleSheet.absoluteFill} />
         <View style={[styles.row, { height: h }]}>
           {loading ? (

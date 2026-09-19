@@ -28,6 +28,7 @@ export interface CardGameState {
   cardsPerPlayer: number;
   werewolfCardCount: number;
   selectedTheme: string;
+  customTopic?: string;
   currentPlayer: number;
   currentRound: number;
   winner: string | null;
