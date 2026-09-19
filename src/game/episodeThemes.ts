@@ -99,40 +99,118 @@ export const episodeThemes: EpisodeTheme[] = [
       "夢を諦めそうになった瞬間",
       "理想の自分と現実のギャップ"
     ]
+  },
+  {
+    "category": "友情・仲間",
+    "topics": [
+      "友達にだけバレている自分の弱点",
+      "友達のために本気になった瞬間",
+      "仲良くなった意外なきっかけ",
+      "友達とした無茶な約束",
+      "仲間に救われた失敗",
+      "友達に言われて忘れられない一言",
+      "親友にもまだ話していない秘密"
+    ]
+  },
+  {
+    "category": "学生時代",
+    "topics": [
+      "先生にバレなかったいたずら",
+      "学校で広まった自分の噂",
+      "部活で一番熱くなった瞬間",
+      "テスト前に起きた大事件",
+      "忘れられない学校のルール",
+      "卒業してから知った秘密",
+      "学生時代の謎のマイブーム"
+    ]
+  },
+  {
+    "category": "家族の話",
+    "topics": [
+      "うちの家族だけの変なルール",
+      "親に隠し通したつもりの秘密",
+      "家族に見られて焦った瞬間",
+      "家族との忘れられないけんか",
+      "大人になってわかった親の気持ち",
+      "家族旅行で起きた事件",
+      "受け継いでしまった家族の癖"
+    ]
+  },
+  {
+    "category": "仕事・アルバイト",
+    "topics": [
+      "仕事中に必死でごまかした失敗",
+      "初給料の意外な使い道",
+      "忘れられないお客さん",
+      "職場で聞いた衝撃の一言",
+      "仕事を辞めようと思った瞬間",
+      "働いて初めて知った現実",
+      "こっそり誇りに思っている仕事"
+    ]
+  },
+  {
+    "category": "旅・おでかけ",
+    "topics": [
+      "旅先で起きた最大のハプニング",
+      "帰れなくなるかと思った瞬間",
+      "旅先で出会った不思議な人",
+      "期待と全然違った旅",
+      "道に迷ってたどり着いた場所",
+      "もう一度行きたい思い出の場所",
+      "旅の相手の意外な一面"
+    ]
+  },
+  {
+    "category": "食べ物の話",
+    "topics": [
+      "人に引かれた食べ方のこだわり",
+      "食べ物のために本気になった瞬間",
+      "料理で起こした大失敗",
+      "忘れられない誰かの手料理",
+      "高すぎて後悔した食事",
+      "苦手を克服したきっかけ",
+      "空腹でやってしまった失敗"
+    ]
+  },
+  {
+    "category": "秘密・意外な一面",
+    "topics": [
+      "誰にも見せたくない検索履歴",
+      "実は今でも信じている迷信",
+      "一人のときだけやっていること",
+      "人には言いにくい小さな趣味",
+      "見栄を張ってついた小さな嘘",
+      "実は得意な意外なこと",
+      "周りに隠しているマイルール"
+    ]
   }
 ];
 
 export const SHUFFLE_THEME = "シャッフル";
+export const CUSTOM_THEME = "自分でつくる";
+export const CUSTOM_TOPIC_MAX_LENGTH = 40;
+export const FREE_CATEGORIES = episodeThemes.slice(0, 3).map((theme) => theme.category);
 
-export function getTopicForTheme(themeName: string): { category: string; topic: string } {
-  if (themeName === SHUFFLE_THEME) {
-    return getRandomTopic();
-  }
-  return getRandomTopicFromTheme(themeName);
+export function normalizeCustomTopic(value: string): string {
+  return value.trim().replace(/\s+/g, " ").slice(0, CUSTOM_TOPIC_MAX_LENGTH);
 }
 
-export function getRandomTopicFromTheme(themeName: string): { category: string; topic: string } {
-  const theme = episodeThemes.find(t => t.category === themeName);
-  if (!theme) {
-    const randomTheme = episodeThemes[Math.floor(Math.random() * episodeThemes.length)];
-    const topic = randomTheme.topics[Math.floor(Math.random() * randomTheme.topics.length)];
-    return {
-      category: randomTheme.category,
-      topic: topic
-    };
-  }
-  const topic = theme.topics[Math.floor(Math.random() * theme.topics.length)];
-  return {
-    category: theme.category,
-    topic: topic
-  };
+/** Every draw, including shuffle and stale saved selections, respects the library. */
+export function getTopicForTheme(
+  themeName: string,
+  availableCategories: readonly string[] = FREE_CATEGORIES,
+  customTopic?: string,
+): { category: string; topic: string } {
+  const custom = normalizeCustomTopic(customTopic ?? "");
+  if (themeName === CUSTOM_THEME && custom) return { category: CUSTOM_THEME, topic: custom };
+  const allowed = episodeThemes.filter((theme) =>
+    FREE_CATEGORIES.includes(theme.category) || availableCategories.includes(theme.category));
+  const selected = allowed.find((theme) => theme.category === themeName);
+  const theme = selected ?? allowed[Math.floor(Math.random() * allowed.length)];
+  return { category: theme.category, topic: theme.topics[Math.floor(Math.random() * theme.topics.length)] };
 }
 
-export function getRandomTopic(): { category: string; topic: string } {
-  const theme = episodeThemes[Math.floor(Math.random() * episodeThemes.length)];
-  const topic = theme.topics[Math.floor(Math.random() * theme.topics.length)];
-  return {
-    category: theme.category,
-    topic: topic
-  };
+export const getRandomTopicFromTheme = getTopicForTheme;
+export function getRandomTopic(availableCategories: readonly string[] = FREE_CATEGORIES) {
+  return getTopicForTheme(SHUFFLE_THEME, availableCategories);
 }

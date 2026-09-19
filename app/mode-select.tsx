@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { useRouter } from "expo-router";
+import { ShopLink } from "@/components/ShopLink";
 import { Screen } from "@/components/Screen";
 import { SketchButton } from "@/components/sketch/SketchButton";
 import { SketchDivider } from "@/components/sketch/SketchDivider";
@@ -44,6 +45,7 @@ export default function ModeSelection() {
           buttonVariant="red"
           onPress={() => router.push("/setup-card")}
         />
+        <ShopLink />
       </Animated.View>
     </Screen>
   );

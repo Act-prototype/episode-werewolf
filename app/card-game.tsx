@@ -13,11 +13,10 @@ import { SketchNumber } from "@/components/sketch/SketchNumber";
 import { SketchOptionRow } from "@/components/sketch/SketchOptionRow";
 import { SketchQuote } from "@/components/sketch/SketchQuote";
 import { ThemeFrame } from "@/components/sketch/ThemeFrame";
-import { ThemePill } from "@/components/sketch/ThemePill";
-import { AiThemeBox } from "@/components/sketch/AiThemeBox";
+import { GameThemeControls } from "@/components/GameThemeControls";
+import { useTopicStore } from "@/game/TopicStore";
 import { haptics } from "@/components/haptics";
 import { getTopicForTheme } from "@/game/episodeThemes";
-import { generateAITheme } from "@/game/aiTheme";
 import { episodeQuote } from "@/game/quotes";
 import { loadCardState, clearCardState, CardGameState } from "@/game/storage";
 import { sketch } from "@/theme/sketchAssets";
@@ -45,17 +44,24 @@ interface Doubt {
   isSuccess: boolean;
 }
 
+function CardFrame({ children, day }: { children: React.ReactNode; day: number }) {
+  return <Screen scroll={false} edges={{ top: false, bottom: true }} avoidKeyboard>
+    <GameHeader day={day} mode="card" />
+    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
+      {children}
+    </ScrollView>
+  </Screen>;
+}
+
 export default function Duel() {
   const router = useRouter();
+  const { ready: libraryReady, availableCategories } = useTopicStore();
   const [gameState, setGameState] = useState<CardGameState | null>(null);
   const [players, setPlayers] = useState<PlayerState[]>([]);
   const [playerCards, setPlayerCards] = useState<CardType[][]>([]);
   const [currentTopic, setCurrentTopic] = useState("");
   const [currentCategory, setCurrentCategory] = useState("");
   const [phase, setPhase] = useState<Phase>("themeAnnouncement");
-  const [generating, setGenerating] = useState(false);
-  const [aiPrompt, setAiPrompt] = useState("");
-  const [showAI, setShowAI] = useState(false);
   const [selectedCards, setSelectedCards] = useState<SelectedCard[]>([]);
   const [selectingPlayer, setSelectingPlayer] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -67,6 +73,7 @@ export default function Duel() {
   const [doubts, setDoubts] = useState<Doubt[]>([]);
 
   useEffect(() => {
+    if (!libraryReady) return;
     (async () => {
       const state = await loadCardState();
       if (!state) return router.replace("/mode-select");
@@ -97,40 +104,22 @@ export default function Duel() {
         }))
       );
 
-      const topic = getTopicForTheme(state.selectedTheme);
+      const topic = getTopicForTheme(state.selectedTheme, availableCategories, state.customTopic);
       setCurrentTopic(topic.topic);
       setCurrentCategory(topic.category);
     })();
-  }, []);
+  }, [libraryReady]);
 
   if (!gameState || players.length === 0) return <Screen>{null}</Screen>;
 
   const activeCount = players.filter((p) => p.cards > 0).length;
 
   const changeTopic = () => {
-    const topic = getTopicForTheme(gameState.selectedTheme);
+    const topic = getTopicForTheme(gameState.selectedTheme, availableCategories, gameState.customTopic);
     setCurrentTopic(topic.topic);
     setCurrentCategory(topic.category);
   };
 
-  const genAI = async () => {
-    if (generating) return;
-    setGenerating(true);
-    try {
-      const generated = await generateAITheme({
-        category: gameState.selectedTheme,
-        currentTopic,
-        customPrompt: aiPrompt || undefined,
-      });
-      setCurrentTopic(generated.topic);
-      setCurrentCategory(generated.category);
-      setAiPrompt("");
-    } catch (e) {
-      console.error("AI theme generation failed:", e);
-    } finally {
-      setGenerating(false);
-    }
-  };
 
   const pickCard = (index: number) => {
     haptics.reveal();
@@ -249,7 +238,7 @@ export default function Duel() {
     setShowCard(false);
     setDoubts([]);
     setPhase("themeAnnouncement");
-    const topic = getTopicForTheme(gameState!.selectedTheme);
+    const topic = getTopicForTheme(gameState!.selectedTheme, availableCategories, gameState!.customTopic);
     setCurrentTopic(topic.topic);
     setCurrentCategory(topic.category);
   };
@@ -259,43 +248,21 @@ export default function Duel() {
     router.replace("/mode-select");
   };
 
-  /** 進行画面の外枠。ヘッダーと余白を全フェーズで揃える */
-  const Frame = ({ children }: { children: React.ReactNode }) => (
-    <Screen scroll={false} edges={{ top: false, bottom: true }} avoidKeyboard>
-      <GameHeader day={gameState.currentRound} mode="card" />
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-      >
-        {children}
-      </ScrollView>
-    </Screen>
-  );
-
   // ---- テーマ発表 ----
   if (phase === "themeAnnouncement") {
     return (
-      <Frame>
+      <CardFrame day={gameState.currentRound}>
         <Animated.View entering={FadeIn.duration(220)} style={styles.stack}>
           <Text style={styles.phaseTitle}>テーマ発表</Text>
 
           <ThemeFrame topic={currentTopic} category={currentCategory} withCat />
 
-          <View style={styles.pillRow}>
-            <ThemePill label="テーマを変更" onPress={changeTopic} />
-            <ThemePill label="AIでつくる" ai onPress={() => setShowAI(!showAI)} />
-          </View>
-
-          {showAI && (
-            <AiThemeBox
-              value={aiPrompt}
-              onChangeText={setAiPrompt}
-              onSubmit={genAI}
-              loading={generating}
-            />
-          )}
+          <GameThemeControls selected={gameState.selectedTheme} customTopic={gameState.customTopic} onShuffle={changeTopic}
+            onChange={(category, customTopic, purchasedCategories) => {
+              setGameState({ ...gameState, selectedTheme: category, customTopic });
+              const topic = getTopicForTheme(category, purchasedCategories ?? availableCategories, customTopic);
+              setCurrentTopic(topic.topic); setCurrentCategory(topic.category);
+            }} />
 
           <Roster players={players} />
 
@@ -305,7 +272,7 @@ export default function Duel() {
             style={styles.cta}
           />
         </Animated.View>
-      </Frame>
+      </CardFrame>
     );
   }
 
@@ -314,7 +281,7 @@ export default function Duel() {
     const cur = players[selectingPlayer];
     const list = playerCards[selectingPlayer] || [];
     return (
-      <Frame>
+      <CardFrame day={gameState.currentRound}>
         {!showCard ? (
           <Animated.View key="select" entering={FadeIn.duration(220)} style={styles.stack}>
             <Text style={styles.phaseTitle}>カードをえらぶ</Text>
@@ -352,7 +319,7 @@ export default function Duel() {
             onNext={confirmCard}
           />
         )}
-      </Frame>
+      </CardFrame>
     );
   }
 
@@ -361,7 +328,7 @@ export default function Duel() {
     const idx = selectedCards.findIndex((sc) => sc.playerIndex === episodePlayer);
     const isLast = idx === selectedCards.length - 1;
     return (
-      <Frame>
+      <CardFrame day={gameState.currentRound}>
         <Animated.View entering={FadeIn.duration(220)} style={styles.stack}>
           <Text style={styles.phaseTitle}>自分語りタイム</Text>
           <Text style={styles.phaseLead}>
@@ -385,7 +352,7 @@ export default function Duel() {
             style={styles.cta}
           />
         </Animated.View>
-      </Frame>
+      </CardFrame>
     );
   }
 
@@ -395,7 +362,7 @@ export default function Duel() {
     // 手札が残っている人だけを数えた「何人目か」
     const doubtOrder = players.slice(0, doubtingPlayer).filter((p) => p.cards > 0).length;
     return (
-      <Frame>
+      <CardFrame day={gameState.currentRound}>
         <Animated.View entering={FadeIn.duration(220)} style={styles.stack}>
           <View style={styles.titleWithRule}>
             <Text style={styles.phaseTitle}>ダウトタイム</Text>
@@ -426,14 +393,14 @@ export default function Duel() {
             <SketchOptionRow label="パス（信じる）" onPress={passDoubt} />
           </View>
         </Animated.View>
-      </Frame>
+      </CardFrame>
     );
   }
 
   // ---- カード公開 ----
   if (phase === "reveal") {
     return (
-      <Frame>
+      <CardFrame day={gameState.currentRound}>
         <Animated.View entering={FadeIn.duration(260)} style={styles.stack}>
           <Text style={styles.phaseTitle}>カード公開</Text>
 
@@ -470,14 +437,14 @@ export default function Duel() {
 
           <SketchButton label="次のラウンドへ" onPress={processRoundEnd} style={styles.cta} />
         </Animated.View>
-      </Frame>
+      </CardFrame>
     );
   }
 
   // ---- 結果 ----
   if (phase === "result") {
     return (
-      <Frame>
+      <CardFrame day={gameState.currentRound}>
         <Animated.View entering={FadeIn.duration(260)} style={styles.stack}>
           <Text style={styles.phaseTitle}>ゲーム終了</Text>
 
@@ -499,7 +466,7 @@ export default function Duel() {
 
           <SketchButton label="トップに戻る" onPress={restart} style={styles.cta} />
         </Animated.View>
-      </Frame>
+      </CardFrame>
     );
   }
 

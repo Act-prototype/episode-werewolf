@@ -1,3 +1,4 @@
+import { TopicStoreProvider } from "@/game/TopicStore";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -16,7 +17,7 @@ export default function RootLayout() {
    *
    * 英字と明朝は使う文字が限られるので scripts/subset-fonts.py で絞った
    * ローカルのttfを読む（Hina Mincho は 6.3MB→11KB、Readex Pro は 97KB→18KB）。
-   * Zen Kaku はプレイヤー名やAI生成のお題に任意の文字が来るため絞らない。
+   * Zen Kaku はプレイヤー名や任意のお題に任意の文字が来るため絞らない。
    */
   const [fontsLoaded, fontError] = useFonts({
     ZenKakuGothicNew_500Medium,
@@ -38,6 +39,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <StatusBar style="dark" />
+        <TopicStoreProvider>
         <Stack
           screenOptions={{
             headerShown: false,
@@ -48,12 +50,14 @@ export default function RootLayout() {
         >
           <Stack.Screen name="index" />
           <Stack.Screen name="mode-select" />
+          <Stack.Screen name="shop" />
           <Stack.Screen name="setup-normal" />
           <Stack.Screen name="setup-card" />
           <Stack.Screen name="role-reveal" options={{ gestureEnabled: false }} />
           <Stack.Screen name="game" options={{ gestureEnabled: false }} />
           <Stack.Screen name="card-game" options={{ gestureEnabled: false }} />
         </Stack>
+        </TopicStoreProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

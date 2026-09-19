@@ -43,7 +43,7 @@ export function SketchButton({
     // 幅やmarginは外側のViewで受ける。PressableScaleはstyleを内側のViewに渡すため、
     // ここに幅を渡すとフレックスアイテム（Pressable本体）の幅に効かない。
     <View style={style}>
-      <PressableScale onPress={onPress} disabled={disabled} haptic={haptic} style={{ height: h }}>
+      <PressableScale accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: disabled }} onPress={onPress} disabled={disabled} haptic={haptic} style={{ height: h }}>
         <SketchStretch name={name} height={h} style={StyleSheet.absoluteFill} />
         <View style={[styles.center, { height: h }]}>
           <Text style={styles.label} numberOfLines={1}>

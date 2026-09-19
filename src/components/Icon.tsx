@@ -47,6 +47,9 @@ const MATERIAL: Record<string, MI> = {
   thinking: "psychology",
   celebrate: "celebration",
   check: "check",
+  lock: "lock-outline",
+  shop: "storefront",
+  edit: "edit",
 };
 
 const COMMUNITY: Record<string, MCI> = {

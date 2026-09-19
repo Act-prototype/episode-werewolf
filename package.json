@@ -17,7 +17,8 @@
     "server": "node server/server.js",
     "serve": "node server/server.js",
     "typecheck": "tsc --noEmit",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "test:topics": "node scripts/test-topics.cjs"
   },
   "dependencies": {
     "@expo-google-fonts/zen-kaku-gothic-new": "^0.4.1",
@@ -42,6 +43,7 @@
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
     "react-native-gesture-handler": "~2.28.0",
+    "react-native-purchases": "^10.9.1",
     "react-native-reanimated": "~4.1.1",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
@@ -56,5 +58,5 @@
     "babel-preset-expo": "^54.0.11",
     "typescript": "~5.9.2"
   },
-  "//": "Backend (AI theme generation) lives in server/. Its runtime deps (express, cors, dotenv) are installed separately; see server/README if deploying the API."
+  "//": "server/ serves the exported Expo Web app. Native topic purchases use RevenueCat; see docs/topic-shop.md."
 }

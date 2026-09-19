@@ -11,7 +11,8 @@
 - **expo-haptics** — 役職めくり・カード公開などの触覚フィードバック
 - **@expo/vector-icons (Material Icons)** — 絵文字は不使用。Google の Material Icons に統一
 - **@react-native-async-storage/async-storage** — 画面間のゲーム状態の受け渡し
-- AIテーマ生成バックエンド … `server/`（Express + OpenAI）
+- トピック購入 … RevenueCat（iOS / Androidの非消費型アプリ内課金）
+- 自分でテーマを作成 … 無料・最大40文字
 
 ## ディレクトリ構成
 
@@ -21,6 +22,7 @@ app/                  Expo Router の画面（ルート）
   index.tsx           モード選択（トップ）
   setup-normal.tsx    通常モード設定
   setup-card.tsx      カードモード設定
+  shop.tsx            トピックショップ・試し読み・買い切り購入
   role-reveal.tsx     役職確認（カードめくり演出）
   game.tsx            通常モード本編（フェーズ進行・議論タイマー・投票）
   card-game.tsx       カードモード本編（カード選択〜ダウト〜公開）
@@ -28,7 +30,7 @@ src/
   theme/tokens.ts     デザイントークン（色・余白・角丸・タイポ・影）
   components/         共通UI（Button, Card, Stepper, Header, GameMenu, Icon …）
   game/               プラットフォーム非依存のゲームロジック（Web版から流用）
-server/server.js      AIテーマ生成API + Web静的配信
+server/server.js      Web静的配信
 assets/               アイコン等
 ```
 
@@ -40,7 +42,7 @@ npm install
 
 ## 開発（Expo Go で確認）
 
-TestFlight 等の配信前は **Expo Go** で実機確認できます（独自ネイティブモジュールは未使用のため Expo Go だけで完結します）。
+TestFlight 等の配信前は **Expo Go** で実機確認できます（購入以外の画面・ゲームを確認できます。実決済にはネイティブビルドが必要です）。
 
 ```bash
 npm start          # Metro を起動。表示される QR を Expo Go アプリで読み取る
@@ -49,7 +51,7 @@ npm run ios        # iOS シミュレータ/実機
 npm run web        # ブラウザ
 ```
 
-> ヒント: AIテーマ生成を試す場合は、別ターミナルで `OPENAI_API_KEY=... npm run server` を起動してください（ネイティブからは `src/game/apiConfig.ts` の本番URLを参照します）。
+> ショップの実決済にはストアの商品登録とRevenueCatの公開SDKキーが必要です。[設定手順と商品一覧](docs/topic-shop.md)を参照してください。
 
 ## 配信（TestFlight / Google Play）
 
@@ -86,8 +88,7 @@ GitHub のリポジトリ Settings → Secrets and variables → Actions に
 2. iPhone で初回だけ、配信された Update の QR / リンクを Expo Go で開く
 3. 次回からは Expo Go の **「最近開いた (Recently opened)」** から開き直すだけで最新を取得
 
-> ネイティブモジュール（独自 native code）を追加した場合は OTA では反映できず、
-> 新しいビルドが必要になる。現状の構成では不要。
+> 課金SDKの追加により、新しいネイティブビルドが必要です。runtimeVersionはfingerprintを使い、異なるネイティブ構成へのOTA配信を防ぎます。
 
 ### すぐ試す / 同一Wi-Fi外で見るだけなら
 

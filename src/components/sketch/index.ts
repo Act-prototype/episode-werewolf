@@ -11,7 +11,6 @@ export { SketchStretch, sketchHeight } from "./SketchStretch";
 export { ThemeFrame } from "./ThemeFrame";
 export { ThemePill } from "./ThemePill";
 export { SketchOptionRow } from "./SketchOptionRow";
-export { AiThemeBox } from "./AiThemeBox";
 export { SketchClock } from "./SketchClock";
 export { SketchQuote } from "./SketchQuote";
 export { GameHeader } from "./GameHeader";

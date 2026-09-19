@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Image, Text, View, StyleSheet, StyleProp, ViewStyle } from "react-native";
 import { SketchStretch } from "./SketchStretch";
 import { sketch } from "@/theme/sketchAssets";
@@ -20,12 +21,13 @@ interface Props {
  * （余白を入れると浮き、負のマージンを入れると枠に食い込む）。
  */
 export function ThemeFrame({ topic, category, withCat, style }: Props) {
+  const [frameHeight, setFrameHeight] = useState(115);
   return (
     <View style={[styles.root, style]}>
-      <View style={styles.frame}>
-        <SketchStretch name="frameTheme" height={115} style={StyleSheet.absoluteFill} />
+      <View style={styles.frame} onLayout={(event) => setFrameHeight(Math.ceil(event.nativeEvent.layout.height))}>
+        <SketchStretch name="frameTheme" height={frameHeight} style={StyleSheet.absoluteFill} />
         <View style={styles.inner}>
-          <Text style={styles.topic} numberOfLines={2}>
+          <Text style={styles.topic}>
             「{topic}」
           </Text>
           {!!category && (
@@ -43,9 +45,9 @@ export function ThemeFrame({ topic, category, withCat, style }: Props) {
 
 const styles = StyleSheet.create({
   root: { width: "100%", maxWidth: 333, alignItems: "center" },
-  frame: { width: "100%", height: 115, justifyContent: "center" },
+  frame: { width: "100%", minHeight: 115, paddingVertical: space.xl, justifyContent: "center" },
   inner: { paddingHorizontal: space.xl, alignItems: "center", gap: space.xs },
-  // お題は2行に折り返せる大きさに抑えてある（AI生成は最長15文字）
+  // 任意テーマも全文表示。お題の高さに合わせて手描き枠を伸ばす。
   topic: { ...type.title, fontSize: 21, lineHeight: 29, color: colors.ink, textAlign: "center" },
   category: { ...type.small, color: colors.inkSub, textAlign: "center" },
   cat: { width: 76, height: 148 },

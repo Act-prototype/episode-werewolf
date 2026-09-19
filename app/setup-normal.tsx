@@ -9,7 +9,8 @@ import { SketchButton } from "@/components/sketch/SketchButton";
 import { SketchDivider } from "@/components/sketch/SketchDivider";
 import { SketchFrame } from "@/components/sketch/SketchFrame";
 import { SketchStepper } from "@/components/sketch/SketchStepper";
-import { episodeThemes } from "@/game/episodeThemes";
+import { useTopicStore } from "@/game/TopicStore";
+import { episodeThemes, CUSTOM_THEME, SHUFFLE_THEME } from "@/game/episodeThemes";
 import { saveGameState, saveNormalSetup, loadNormalSetup } from "@/game/storage";
 import { GameState } from "@/game/types";
 import { colors, space, type } from "@/theme/tokens";
@@ -21,6 +22,7 @@ const MIN_VILLAGERS = 2;
 
 export default function Setup() {
   const router = useRouter();
+  const store = useTopicStore();
   // 「プレイヤー」は参加者の総数。人狼はその内数（村人 = プレイヤー - 人狼）。
   const [playerCount, setPlayerCount] = useState(5);
   const [werewolfCount, setWerewolfCount] = useState(1);
@@ -37,7 +39,7 @@ export default function Setup() {
       if (saved) {
         setPlayerCount(saved.playerCount);
         setWerewolfCount(saved.werewolfCount);
-        setSelectedTheme(saved.selectedTheme);
+        setSelectedTheme(saved.selectedTheme === CUSTOM_THEME ? episodeThemes[0].category : saved.selectedTheme);
         setNames(saved.names);
       }
       setReady(true);
@@ -59,8 +61,10 @@ export default function Setup() {
     setNames((prev) => prev.map((n, i) => (i === index ? name : n)));
 
   const handleStart = async () => {
+    if (!store.ready) return;
+    const theme = selectedTheme === SHUFFLE_THEME || store.availableCategories.includes(selectedTheme) ? selectedTheme : episodeThemes[0].category;
     // ゲーム終了後にこの画面へ戻ったとき、同じ顔ぶれで続けられるよう設定を残す
-    await saveNormalSetup({ playerCount, werewolfCount, selectedTheme, names });
+    await saveNormalSetup({ playerCount, werewolfCount, selectedTheme: theme, names });
 
     const state: GameState = {
       // 名前欄の数ではなくプレイヤー数を人数の正とする
@@ -73,7 +77,7 @@ export default function Setup() {
         votes: 0,
       })),
       werewolfCount,
-      selectedTheme,
+      selectedTheme: theme,
       currentPhase: "roleReveal",
       currentDay: 1,
       currentTopic: null,
@@ -129,7 +133,7 @@ export default function Setup() {
           <NameInputList names={names} onChange={handleName} />
         </SketchFrame>
 
-        <SketchButton label="設定おわり" onPress={handleStart} style={styles.start} />
+        <SketchButton label="設定おわり" disabled={!store.ready} onPress={handleStart} style={styles.start} />
       </ScrollView>
     </Screen>
   );
