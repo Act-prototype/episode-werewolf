@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { GameState } from "./types";
+import { normalizeNormalGame } from "./gameLogic";
 
 /**
  * Web版の localStorage("gameState" / "cardState") を AsyncStorage に置き換えたもの。
@@ -40,7 +41,12 @@ export async function saveGameState(state: GameState): Promise<void> {
 
 export async function loadGameState(): Promise<GameState | null> {
   const raw = await AsyncStorage.getItem(GAME_KEY);
-  return raw ? (JSON.parse(raw) as GameState) : null;
+  if (!raw) return null;
+  let parsed: unknown;
+  try { parsed = JSON.parse(raw); } catch { return null; }
+  const normalized = normalizeNormalGame(parsed);
+  if (normalized && normalized !== parsed) await saveGameState(normalized);
+  return normalized;
 }
 
 export async function clearGameState(): Promise<void> {

@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { View, Text, Image, ScrollView, StyleSheet } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Alert, View, Text, Image, ScrollView, StyleSheet } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import { Screen } from "@/components/Screen";
@@ -11,16 +11,15 @@ import { SketchClock } from "@/components/sketch/SketchClock";
 import { SketchDivider } from "@/components/sketch/SketchDivider";
 import { SketchFrame } from "@/components/sketch/SketchFrame";
 import { SketchQuote } from "@/components/sketch/SketchQuote";
-import { SketchStretch } from "@/components/sketch/SketchStretch";
 import { ThemeFrame } from "@/components/sketch/ThemeFrame";
 import { SketchOptionRow } from "@/components/sketch/SketchOptionRow";
 import { GameThemeControls } from "@/components/GameThemeControls";
 import { useTopicStore } from "@/game/TopicStore";
 import { haptics } from "@/components/haptics";
 import { GameState, Player } from "@/game/types";
-import { checkGameOver, eliminatePlayer } from "@/game/gameLogic";
+import { createNormalGame, resolveNormalRound } from "@/game/gameLogic";
 import { getTopicForTheme, CUSTOM_THEME } from "@/game/episodeThemes";
-import { discussionQuote, episodeQuote, PEACEFUL_MORNING } from "@/game/quotes";
+import { discussionQuote, episodeQuote } from "@/game/quotes";
 import { loadGameState, saveGameState, clearGameState } from "@/game/storage";
 import { sketch } from "@/theme/sketchAssets";
 import { colors, space, type } from "@/theme/tokens";
@@ -33,8 +32,9 @@ export default function Game() {
   const router = useRouter();
   const { ready: libraryReady, availableCategories } = useTopicStore();
   const [state, setState] = useState<GameState | null>(null);
-  const [suspected, setSuspected] = useState<number[]>([]);
-  const [skipExile, setSkipExile] = useState(false);
+  const [vote, setVote] = useState<number | "tie" | null>(null);
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
   const [time, setTime] = useState(DISCUSSION_SECONDS);
   const [timerOn, setTimerOn] = useState(false);
 
@@ -43,6 +43,7 @@ export default function Game() {
     (async () => {
       const saved = await loadGameState();
       if (!saved) return router.replace("/mode-select");
+      if (saved.currentPhase === "roleReveal") return router.replace("/role-reveal");
       if (saved.currentPhase === "episodeAnnouncement") {
         const isAvailable = availableCategories.includes(saved.currentTopic?.category ?? "") || saved.currentTopic?.category === CUSTOM_THEME;
         if (!saved.currentTopic || !isAvailable) {
@@ -67,93 +68,81 @@ export default function Game() {
       });
     }, 1000);
     return () => clearInterval(id);
-  }, [timerOn, state]);
+  }, [timerOn, state?.currentPhase]);
 
-  const update = async (next: GameState) => {
-    setState(next);
-    await saveGameState(next);
+  const persist = async (next: GameState, destination?: "/role-reveal" | "/setup-normal") => {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      await saveGameState(next);
+      if (destination) router.replace(destination);
+      else {
+        if (next.currentPhase === "discussion" && state?.currentPhase !== "discussion") {
+          setTime(DISCUSSION_SECONDS);
+          setTimerOn(true);
+        } else if (next.currentPhase !== "discussion") {
+          setTimerOn(false);
+        }
+        setState(next);
+      }
+    } catch {
+      Alert.alert("保存できませんでした", "もう一度お試しください。");
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
   };
 
   if (!state) return <Screen>{null}</Screen>;
-  const alive = state.players.filter((p) => p.isAlive);
 
   const transition = () => {
-    const next: GameState = { ...state };
+    if (savingRef.current) return;
     switch (state.currentPhase) {
       case "episodeAnnouncement":
-        next.currentPhase = "episodeTime";
+        void persist({ ...state, currentPhase: "episodeTime" });
         break;
       case "episodeTime":
-        next.currentPhase = "discussion";
-        setTime(DISCUSSION_SECONDS);
-        setTimerOn(true);
+        void persist({ ...state, currentPhase: "discussion" });
         break;
       case "discussion":
-        next.currentPhase = "voting";
-        setSuspected([]);
-        setSkipExile(false);
-        setTimerOn(false);
+        setVote(null);
+        void persist({ ...state, currentPhase: "voting" });
         break;
-      case "voting": {
-        if (skipExile) {
-          next.eliminatedTonight = null;
-        } else {
-          const counts: Record<number, number> = {};
-          suspected.forEach((id) => (counts[id] = (counts[id] || 0) + 1));
-          let max = 0;
-          let elim: number | null = null;
-          Object.entries(counts).forEach(([id, c]) => {
-            if (c > max) {
-              max = c;
-              elim = parseInt(id);
-            }
-          });
-          if (elim !== null) {
-            next.players = eliminatePlayer(next.players, elim);
-            next.eliminatedTonight = elim;
-          }
-        }
-        next.currentPhase = "voteResult";
-        haptics.warning();
+      case "voting":
+        if (vote === null) return;
+        void persist(resolveNormalRound(state, vote === "tie" ? null : vote));
+        haptics.reveal();
         break;
-      }
-      case "voteResult": {
-        const winner = checkGameOver(next.players);
-        if (winner) {
-          next.winner = winner;
-          next.currentPhase = "gameOver";
-          haptics.success();
-        } else {
-          next.currentDay += 1;
-          next.currentTopic = getTopicForTheme(next.selectedTheme, availableCategories, next.customTopic);
-          next.currentPhase = "episodeAnnouncement";
-        }
-        next.eliminatedTonight = null;
-        break;
-      }
     }
-    update(next);
-  };
-
-  const toggleSuspect = (id: number) => {
-    haptics.select();
-    setSuspected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
   const changeTopic = () =>
-    update({ ...state, currentTopic: getTopicForTheme(state.selectedTheme, availableCategories, state.customTopic) });
+    void persist({ ...state, currentTopic: getTopicForTheme(state.selectedTheme, availableCategories, state.customTopic) });
 
+  const replay = () => {
+    const next = createNormalGame({ playerNames: state.players.map((player) => player.name), selectedTheme: state.selectedTheme, customTopic: state.customTopic });
+    void persist(next, "/role-reveal");
+  };
 
-  const restart = async () => {
-    // 設定(normalSetup)は残す。同じ顔ぶれでもう1戦するのが普通なので、
-    // トップではなく設定画面に戻して人数・名前・テーマを引き継ぐ。
-    await clearGameState();
-    router.replace("/setup-normal");
+  const changeSetup = async () => {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      await clearGameState();
+      router.replace("/setup-normal");
+    } catch {
+      Alert.alert("保存できませんでした", "もう一度お試しください。");
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
   };
 
   const topic = state.currentTopic;
-  const eliminated =
-    state.eliminatedTonight !== null ? state.players[state.eliminatedTonight] : null;
+  const accused = state.players.find((player) => player.id === state.accusedPlayerId);
+  const wolf = state.players.find((player) => player.role === "人狼");
 
   // 勝敗発表の2グループ。役職未割当(null)はどちらにも入れない
   const winners = state.players.filter((p) => p.role !== null && p.role === state.winner);
@@ -161,8 +150,7 @@ export default function Game() {
 
   return (
     <Screen scroll={false} edges={{ top: false, bottom: true }} avoidKeyboard>
-      {/* 勝敗発表は「何日目」が意味を持たないので日付を出さない */}
-      <GameHeader day={state.currentPhase === "gameOver" ? undefined : state.currentDay} />
+      <GameHeader />
 
       <ScrollView
         contentContainerStyle={styles.content}
@@ -174,14 +162,15 @@ export default function Game() {
         {state.currentPhase === "episodeAnnouncement" && (
           <Animated.View entering={FadeIn.duration(220)} style={styles.stack}>
             <Text style={styles.phaseTitle}>テーマ発表</Text>
+            <Text style={styles.phaseLead}>全員で話して、1回の投票で決着。</Text>
 
             <ThemeFrame category={topic?.category} topic={topic?.topic} withCat />
 
             <GameThemeControls selected={state.selectedTheme} customTopic={state.customTopic} onShuffle={changeTopic}
-              onChange={(category, customTopic, purchasedCategories) => update({ ...state, selectedTheme: category, customTopic, currentTopic: getTopicForTheme(category, purchasedCategories ?? availableCategories, customTopic) })} />
+              onChange={(category, customTopic, purchasedCategories) => void persist({ ...state, selectedTheme: category, customTopic, currentTopic: getTopicForTheme(category, purchasedCategories ?? availableCategories, customTopic) })} />
 
             <View style={styles.roster}>
-              {alive.map((p) => (
+              {state.players.map((p) => (
                 <View key={p.id} style={styles.rosterItem}>
                   <Text style={styles.rosterName}>{p.name}</Text>
                   <SketchDivider weight="fine" width={130} height={3} />
@@ -189,7 +178,7 @@ export default function Game() {
               ))}
             </View>
 
-            <SketchButton label="自分語りタイムへ" onPress={transition} style={styles.cta} />
+            <SketchButton label="自分語りタイムへ" onPress={transition} disabled={saving} style={styles.cta} />
           </Animated.View>
         )}
 
@@ -205,7 +194,7 @@ export default function Game() {
 
             <SketchQuote quote={episodeQuote(state.currentDay)} />
 
-            <SketchButton label="犯人探しタイムへ" onPress={transition} style={styles.cta} />
+            <SketchButton label="犯人探しタイムへ" onPress={transition} disabled={saving} style={styles.cta} />
           </Animated.View>
         )}
 
@@ -240,95 +229,25 @@ export default function Game() {
 
             <SketchQuote quote={discussionQuote(state.currentDay)} />
 
-            <SketchButton label="投票へ" onPress={transition} style={styles.cta} />
+            <SketchButton label="投票へ" onPress={transition} disabled={saving} style={styles.cta} />
           </Animated.View>
         )}
 
-        {/* 裁きの時 */}
+        {/* 一斉投票の結果を1台に入力する */}
         {state.currentPhase === "voting" && (
           <Animated.View entering={FadeIn.duration(220)} style={styles.stack}>
-            <View style={styles.titleWithRule}>
-              <Text style={styles.phaseTitle}>裁きの時</Text>
-              <SketchDivider weight="fine" width={110} height={3} />
-            </View>
-            <Text style={styles.phaseLead}>人狼だと思うプレイヤーを選べ{"\n"}複数選択可能</Text>
-
+            <Text style={styles.phaseTitle}>投票タイム</Text>
+            <Text style={styles.phaseLead}>全員で人狼だと思う人を一斉に指さそう。{"\n"}最も票が集まった1人を選んでね。</Text>
             <View style={styles.voteList}>
-              {alive.map((p) => (
-                <SketchOptionRow
-                  key={p.id}
-                  label={p.name}
-                  selected={suspected.includes(p.id)}
-                  onPress={() => {
-                    if (skipExile) setSkipExile(false);
-                    toggleSuspect(p.id);
-                  }}
-                />
+              {state.players.map((player) => (
+                <SketchOptionRow key={player.id} label={player.name} selected={vote === player.id}
+                  onPress={() => { if (!savingRef.current) setVote(player.id); }} />
               ))}
-              <SketchOptionRow
-                label="今回は誰も追放しない"
-                selected={skipExile}
-                onPress={() => {
-                  setSkipExile(!skipExile);
-                  if (!skipExile) setSuspected([]);
-                }}
-              />
+              <SketchOptionRow label="最多票が同票だった" selected={vote === "tie"}
+                onPress={() => { if (!savingRef.current) setVote("tie"); }} />
             </View>
-
-            <Text style={styles.phaseLead}>さあ、投票だ。</Text>
-
-            <SketchButton
-              label="結果発表へ"
-              onPress={transition}
-              disabled={!skipExile && suspected.length === 0}
-              style={styles.cta}
-            />
-          </Animated.View>
-        )}
-
-        {/* 結果発表 */}
-        {state.currentPhase === "voteResult" && (
-          <Animated.View entering={FadeIn.duration(260)} style={[styles.stack, styles.fill]}>
-            {eliminated ? (
-              <>
-                {/* 追放ありのときだけ「結果発表」の枠が出る（モック準拠） */}
-                <View style={styles.resultLabel}>
-                  <SketchStretch name="box" height={46} style={StyleSheet.absoluteFill} />
-                  <Text style={styles.resultLabelText}>結果発表</Text>
-                </View>
-
-                <Text style={styles.elimName}>{eliminated.name}が追放....</Text>
-                <RoleArt
-                  role={eliminated.role === "人狼" ? "人狼" : "村人"}
-                  size={210}
-                  variant={eliminated.id}
-                  style={styles.elimArt}
-                />
-
-                <View style={styles.spacer} />
-
-                <Text style={styles.verdict}>
-                  こいつは
-                  <Text
-                    style={{ color: eliminated.role === "人狼" ? colors.wolf : colors.villager }}
-                  >
-                    【{eliminated.role}】
-                  </Text>
-                  だった
-                </Text>
-              </>
-            ) : (
-              <>
-                <Text style={styles.morning}>{PEACEFUL_MORNING}</Text>
-                <Image source={sketch.artDawnHill} style={styles.dawn} resizeMode="contain" />
-
-                <View style={styles.spacer} />
-
-                <Text style={styles.noVerdict}>昨夜は誰も裁かれなかった...</Text>
-              </>
-            )}
-
-            <SketchButton label="次へ" onPress={transition} style={styles.cta} />
+            <Text style={styles.phaseLead}>人狼を当てたら村人の勝ち。{"\n"}外れ・同票なら人狼の勝ち。</Text>
+            <SketchButton label="結果発表へ" onPress={transition} disabled={saving || vote === null} style={styles.cta} />
           </Animated.View>
         )}
 
@@ -341,6 +260,9 @@ export default function Game() {
               resizeMode="contain"
             />
 
+            <Text style={styles.phaseLead}>{accused ? `投票で選ばれたのは ${accused.name}` : "最多票が同票になったため、人狼の勝ち"}</Text>
+            <Text style={styles.phaseTitle}>人狼は {wolf?.name} でした</Text>
+
             {/* 勝者は上下の手書きアーチで囲う */}
             <SketchFrame style={styles.fullWidth} contentStyle={styles.winnerFrameInner}>
               <ResultGrid players={winners} />
@@ -349,7 +271,11 @@ export default function Game() {
             <Image source={sketch.resultMakeinu} style={styles.makeinuArt} resizeMode="contain" />
             <ResultGrid players={losers} />
 
-            <SketchButton label="新しいゲームを始める" onPress={restart} style={styles.cta} />
+            <Text style={styles.phaseLead}>うそだったのは、どんなところ？{"\n"}みんなで答え合わせしよう。</Text>
+            <SketchButton label="同じメンバーでもう1回" onPress={replay} disabled={saving} style={styles.cta} />
+            <PressableScale accessibilityRole="button" accessibilityLabel="設定を変える" onPress={changeSetup} disabled={saving}>
+              <Text style={styles.phaseLead}>設定を変える</Text>
+            </PressableScale>
           </Animated.View>
         )}
       </ScrollView>
@@ -408,18 +334,14 @@ const styles = StyleSheet.create({
   // 結果発表は締めの一文とボタンを下に寄せるため、内容を画面高まで伸ばせるようにする
   content: { flexGrow: 1, paddingHorizontal: space.xl, paddingBottom: space["3xl"] },
   stack: { alignItems: "center", gap: space.lg, paddingTop: space.xl },
-  fill: { flex: 1, width: "100%" },
-  spacer: { flex: 1, minHeight: space.xl },
 
   phaseTitle: { ...type.h2, color: colors.ink, textAlign: "center" },
   phaseLead: { ...type.small, color: colors.inkSub, textAlign: "center", lineHeight: 20 },
-  titleWithRule: { alignItems: "center", gap: space.xs },
 
   // テーマ枠
   // お題が主役。2行に折り返せる大きさに抑えてある（任意作成は最長40文字）
 
 
-  pillRow: { flexDirection: "row", gap: space.md },
 
 
   // 参加者一覧（テーマ発表）
@@ -437,25 +359,6 @@ const styles = StyleSheet.create({
   timeStep: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
   stepMinus: { width: 24, height: 8 },
   stepPlus: { width: 20, height: 18 },
-
-  // 結果発表
-  resultLabel: {
-    width: "100%",
-    maxWidth: 330,
-    height: 46,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: space["2xl"],
-  },
-  resultLabelText: { ...type.title, color: colors.ink },
-  elimName: { ...type.title, color: colors.ink, marginTop: space["3xl"] },
-  elimArt: { marginVertical: space.sm },
-  verdict: { ...type.display, fontFamily: type.title.fontFamily, color: colors.ink, textAlign: "center" },
-  // 追放なしの締め文はモックでは役職開示より小さい
-  noVerdict: { ...type.title, color: colors.ink, textAlign: "center" },
-  // 朝の情景だけ明朝で組む
-  morning: { ...type.narration, color: colors.ink, textAlign: "center", lineHeight: 32, marginTop: space["4xl"] },
-  dawn: { width: "100%", height: 110, marginTop: space["2xl"] },
 
   // 投票
   voteList: { width: "100%", gap: space.md, marginTop: space.sm },
