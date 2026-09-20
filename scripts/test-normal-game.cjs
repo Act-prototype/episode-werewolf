@@ -1,0 +1,133 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+const ts = require('typescript');
+const root = path.resolve(__dirname, '..');
+const plain = value => JSON.parse(JSON.stringify(value));
+function loader(mocks = {}, math = Math) {
+  const cache = new Map();
+  function load(file) {
+    const full = path.resolve(root, file);
+    if (cache.has(full)) return cache.get(full).exports;
+    const module = { exports: {} }; cache.set(full, module);
+    const code = ts.transpileModule(fs.readFileSync(full, 'utf8'), {
+      compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
+    }).outputText;
+    vm.runInNewContext(code, { module, exports: module.exports, Math: math, require(id) {
+      if (id in mocks) return mocks[id];
+      if (id.startsWith('.')) return load(path.resolve(path.dirname(full), `${id}.ts`));
+      throw new Error(`Unexpected dependency: ${id}`);
+    } }, { filename: full });
+    return module.exports;
+  }
+  return load;
+}
+const load = loader();
+const { createNormalGame, resolveNormalRound, normalizeNormalGame } = load('src/game/gameLogic.ts');
+const themes = load('src/game/episodeThemes.ts');
+const names = ['あおい', 'なお', 'はる', 'ゆう', 'そら'];
+const fresh = (overrides = {}) => createNormalGame({ playerNames: names, selectedTheme: themes.FREE_CATEGORIES[0], ...overrides });
+function voting(wolfId = 0) {
+  const state = fresh();
+  return { ...state, currentPhase: 'voting', players: state.players.map(p => ({ ...p, role: p.id === wolfId ? '人狼' : '村人', hasSeenRole: true })) };
+}
+function assertFresh(state, expectedNames = names) {
+  assert.equal(state.rulesVersion, 2); assert.equal(state.currentPhase, 'roleReveal');
+  assert.equal(state.werewolfCount, 1); assert.equal(state.currentDay, 1);
+  for (const key of ['currentTopic', 'accusedPlayerId', 'eliminatedTonight', 'winner']) assert.equal(state[key], null);
+  assert.deepEqual(plain(state.votingResults), {});
+  assert.deepEqual(plain(state.players.map(p => p.name)), expectedNames);
+  state.players.forEach((p, id) => {
+    assert.equal(p.id, id); assert.equal(p.role, null); assert.equal(p.isAlive, true);
+    assert.equal(p.hasSeenRole, false); assert.equal(p.votes, 0);
+  });
+}
+let count = 0;
+async function test(name, fn) { await fn(); count++; console.log(`PASS ${name}`); }
+async function main() {
+  await test('3〜20人で開始でき、範囲外は拒否する', () => {
+    for (let size = 3; size <= 20; size++) {
+      const playerNames = Array.from({ length: size }, (_, i) => `参加者${i}`);
+      assertFresh(fresh({ playerNames }), playerNames);
+    }
+    for (const size of [0, 2, 21]) assert.throws(() => fresh({ playerNames: Array(size).fill('名前') }));
+  });
+  await test('3〜20人の全位置に唯一の人狼を配役できる', () => {
+    let draws = []; const math = Object.create(Math);
+    math.random = () => { assert.ok(draws.length); return draws.shift(); };
+    const { assignRoles } = loader({}, math)('src/game/gameLogic.ts');
+    for (let size = 3; size <= 20; size++) for (let wolfId = 0; wolfId < size; wolfId++) {
+      draws = Array.from({ length: size - 1 }, (_, i) => size - 1 - i === wolfId ? 0 : 0.9999999999999999);
+      const roles = assignRoles(size, 1);
+      assert.equal(roles.length, size); assert.equal(roles.filter(r => r === '人狼').length, 1);
+      assert.equal(roles[wolfId], '人狼'); assert.equal(draws.length, 0);
+    }
+  });
+  await test('正解・不正解・同票のすべてが1投票で決着し、脱落させない', () => {
+    for (const [wolfId, accused, winner] of [[0, 0, '村人'], [4, 4, '村人'], [0, 1, '人狼'], [0, null, '人狼']]) {
+      const state = voting(wolfId), before = plain(state), result = resolveNormalRound(state, accused);
+      assert.equal(result.currentPhase, 'gameOver'); assert.equal(result.winner, winner);
+      assert.equal(result.accusedPlayerId, accused); assert.ok(result.players.every(p => p.isAlive));
+      assert.equal(result.currentDay, 1); assert.deepEqual(plain(state), before);
+      assert.equal(normalizeNormalGame(result), result);
+    }
+  });
+  await test('無効な投票・二度目の確定・不正配役を拒否する', () => {
+    for (const id of [-1, 5, 0.5, NaN, '0', undefined]) assert.throws(() => resolveNormalRound(voting(), id));
+    assert.throws(() => resolveNormalRound(fresh(), 0));
+    assert.throws(() => resolveNormalRound(resolveNormalRound(voting(), 0), 0));
+    for (const roles of [[null, null, null, null, null], ['村人','村人','村人','村人','村人'], ['人狼','人狼','村人','村人','村人']]) {
+      const state = voting(); state.players = state.players.map((p, i) => ({ ...p, role: roles[i] }));
+      assert.throws(() => resolveNormalRound(state, 0));
+    }
+  });
+  await test('旧ルールの全フェーズで、脱落者も含め全員で再配役する', () => {
+    for (const currentPhase of ['roleReveal','episodeAnnouncement','episodeTime','discussion','voting','voteResult','night','gameOver']) {
+      const old = { ...voting(), currentPhase, currentDay: 3, werewolfCount: 2, selectedTheme: themes.CUSTOM_THEME, customTopic: '休日に一人でしたこと', eliminatedTonight: 1 };
+      delete old.rulesVersion; delete old.accusedPlayerId;
+      old.players[1] = { ...old.players[1], role: '人狼', isAlive: false, votes: 2 };
+      const before = plain(old), migrated = normalizeNormalGame(old);
+      assertFresh(migrated); assert.equal(migrated.selectedTheme, themes.CUSTOM_THEME);
+      assert.equal(migrated.customTopic, old.customTopic); assert.deepEqual(plain(old), before);
+    }
+  });
+  await test('新ルールの途中再開は役・確認済み情報・お題を保持する', () => {
+    const initial = fresh(); assert.equal(normalizeNormalGame(initial), initial);
+    for (const currentPhase of ['roleReveal','episodeAnnouncement','episodeTime','discussion','voting']) {
+      const state = voting(3); state.currentPhase = currentPhase;
+      state.currentTopic = { category: themes.FREE_CATEGORIES[0], topic: '表示済みのお題' };
+      if (currentPhase === 'roleReveal') state.players = state.players.map(p => ({ ...p, hasSeenRole: p.id < 2 }));
+      assert.equal(normalizeNormalGame(state), state);
+    }
+    for (const mutate of [s => { s.currentPhase = 'night'; }, s => { s.players[1].id = 0; }, s => { s.players[1].isAlive = false; }, s => { s.players[1].role = '人狼'; }]) {
+      const state = voting(); mutate(state); assertFresh(normalizeNormalGame(state));
+    }
+    for (const value of [null, {}, 'state', { ...fresh(), players: [] }, { ...fresh(), players: [null,null,null] }, { ...fresh(), selectedTheme: null }]) assert.equal(normalizeNormalGame(value), null);
+  });
+  await test('再戦は全員復帰し、自作・トピック・ランダムの選択を引き継ぐ', () => {
+    for (const selectedTheme of [themes.CUSTOM_THEME, themes.FREE_CATEGORIES[0], themes.SHUFFLE_THEME]) {
+      const finished = resolveNormalRound({ ...voting(4), selectedTheme, customTopic: selectedTheme === themes.CUSTOM_THEME ? '自作のお題' : undefined }, 4);
+      const next = createNormalGame({ playerNames: finished.players.map(p => p.name), selectedTheme: finished.selectedTheme, customTopic: finished.customTopic });
+      assertFresh(next); assert.equal(next.selectedTheme, selectedTheme); assert.equal(next.customTopic, finished.customTopic);
+      const topic = themes.getTopicForTheme(next.selectedTheme, themes.FREE_CATEGORIES, next.customTopic);
+      if (selectedTheme === themes.CUSTOM_THEME) assert.equal(topic.topic, '自作のお題');
+      else assert.ok(themes.FREE_CATEGORIES.includes(topic.category));
+    }
+  });
+  await test('storageは移行を一度だけ保存し、他モードの保存は変更しない', async () => {
+    const old = voting(); delete old.rulesVersion;
+    const data = new Map([['gameState', JSON.stringify(old)], ['cardState','unchanged'], ['normalSetup','unchanged']]), writes = [];
+    const storage = loader({ '@react-native-async-storage/async-storage': { __esModule: true, default: {
+      getItem: async key => data.get(key) ?? null,
+      setItem: async (key, value) => { writes.push(key); data.set(key, value); },
+    } } })('src/game/storage.ts');
+    const migrated = await storage.loadGameState(); assertFresh(migrated); assert.deepEqual(writes, ['gameState']);
+    assert.deepEqual(plain(await storage.loadGameState()), plain(migrated)); assert.deepEqual(writes, ['gameState']);
+    assert.equal(data.get('cardState'), 'unchanged'); assert.equal(data.get('normalSetup'), 'unchanged');
+    for (const raw of ['{broken', 'null', '{"players":[]}']) { data.set('gameState', raw); assert.equal(await storage.loadGameState(), null); }
+    assert.deepEqual(writes, ['gameState']);
+  });
+  console.log(`${count} normal-game tests passed.`);
+}
+main().catch(error => { console.error(error); process.exitCode = 1; });

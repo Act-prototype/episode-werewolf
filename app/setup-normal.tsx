@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { View, Text, ScrollView, StyleSheet } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Alert, View, Text, ScrollView, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { Screen } from "@/components/Screen";
 import { ThemePicker } from "@/components/ThemePicker";
@@ -12,20 +12,19 @@ import { SketchStepper } from "@/components/sketch/SketchStepper";
 import { useTopicStore } from "@/game/TopicStore";
 import { episodeThemes, CUSTOM_THEME, SHUFFLE_THEME } from "@/game/episodeThemes";
 import { saveGameState, saveNormalSetup, loadNormalSetup } from "@/game/storage";
-import { GameState } from "@/game/types";
+import { createNormalGame } from "@/game/gameLogic";
 import { colors, space, type } from "@/theme/tokens";
 
 const MAX_PLAYERS = 20;
 const MIN_PLAYERS = 3;
-/** 村人は最低2人残す（1人だと議論が成立しない） */
-const MIN_VILLAGERS = 2;
 
 export default function Setup() {
   const router = useRouter();
   const store = useTopicStore();
   // 「プレイヤー」は参加者の総数。人狼はその内数（村人 = プレイヤー - 人狼）。
   const [playerCount, setPlayerCount] = useState(5);
-  const [werewolfCount, setWerewolfCount] = useState(1);
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
   const [selectedTheme, setSelectedTheme] = useState(episodeThemes[0].category);
   const [names, setNames] = useState<string[]>(
     Array.from({ length: 5 }, (_, i) => defaultPlayerName(i))
@@ -38,7 +37,6 @@ export default function Setup() {
       const saved = await loadNormalSetup();
       if (saved) {
         setPlayerCount(saved.playerCount);
-        setWerewolfCount(saved.werewolfCount);
         setSelectedTheme(saved.selectedTheme === CUSTOM_THEME ? episodeThemes[0].category : saved.selectedTheme);
         setNames(saved.names);
       }
@@ -53,40 +51,30 @@ export default function Setup() {
   const updatePlayers = (next: number) => {
     setPlayerCount(next);
     resizeNames(next);
-    // 人数を減らして村人が2人を切る場合は人狼も詰める
-    setWerewolfCount((w) => Math.min(w, Math.max(1, next - MIN_VILLAGERS)));
   };
 
   const handleName = (index: number, name: string) =>
     setNames((prev) => prev.map((n, i) => (i === index ? name : n)));
 
   const handleStart = async () => {
-    if (!store.ready) return;
-    const theme = selectedTheme === SHUFFLE_THEME || store.availableCategories.includes(selectedTheme) ? selectedTheme : episodeThemes[0].category;
-    // ゲーム終了後にこの画面へ戻ったとき、同じ顔ぶれで続けられるよう設定を残す
-    await saveNormalSetup({ playerCount, werewolfCount, selectedTheme: theme, names });
-
-    const state: GameState = {
-      // 名前欄の数ではなくプレイヤー数を人数の正とする
-      players: Array.from({ length: playerCount }, (_, i) => ({
-        id: i,
-        name: names[i] || defaultPlayerName(i),
-        role: null,
-        isAlive: true,
-        hasSeenRole: false,
-        votes: 0,
-      })),
-      werewolfCount,
-      selectedTheme: theme,
-      currentPhase: "roleReveal",
-      currentDay: 1,
-      currentTopic: null,
-      eliminatedTonight: null,
-      votingResults: {},
-      winner: null,
-    };
-    await saveGameState(state);
-    router.push("/role-reveal");
+    if (!store.ready || savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      const theme = selectedTheme === SHUFFLE_THEME || store.availableCategories.includes(selectedTheme) ? selectedTheme : episodeThemes[0].category;
+      await saveNormalSetup({ playerCount, werewolfCount: 1, selectedTheme: theme, names });
+      const state = createNormalGame({
+        playerNames: Array.from({ length: playerCount }, (_, i) => names[i] || defaultPlayerName(i)),
+        selectedTheme: theme,
+      });
+      await saveGameState(state);
+      router.push("/role-reveal");
+    } catch {
+      Alert.alert("保存できませんでした", "もう一度お試しください。");
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
   };
 
   if (!ready) return <Screen>{null}</Screen>;
@@ -114,13 +102,7 @@ export default function Setup() {
             max={MAX_PLAYERS}
             onChange={updatePlayers}
           />
-          <SketchStepper
-            label="人狼"
-            value={werewolfCount}
-            min={1}
-            max={Math.max(1, playerCount - MIN_VILLAGERS)}
-            onChange={setWerewolfCount}
-          />
+          <Text style={styles.ruleNote}>人狼は1人。1回の投票で決着。{"\n"}次のゲームも全員で参加できます。</Text>
         </SketchFrame>
 
         <SketchFrame style={styles.section} contentStyle={styles.group}>
@@ -133,7 +115,7 @@ export default function Setup() {
           <NameInputList names={names} onChange={handleName} />
         </SketchFrame>
 
-        <SketchButton label="設定おわり" disabled={!store.ready} onPress={handleStart} style={styles.start} />
+        <SketchButton label="設定おわり" disabled={!store.ready || saving} onPress={handleStart} style={styles.start} />
       </ScrollView>
     </Screen>
   );
@@ -162,5 +144,6 @@ const styles = StyleSheet.create({
   sectionTitle: { alignItems: "center", gap: space.xs },
   sectionLabel: { ...type.h2, color: colors.ink },
 
+  ruleNote: { ...type.small, color: colors.inkSub, textAlign: "center" },
   start: { marginTop: space.md },
 });

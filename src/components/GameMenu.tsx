@@ -182,22 +182,22 @@ function NormalRules() {
       </RuleBlock>
 
       <RuleBlock title="役職と勝ち">
-        <RoleLine role="村人">全ての人狼を追放できたら勝ち</RoleLine>
-        <RoleLine role="人狼">村人と同数以上まで生き残れば勝ち</RoleLine>
+        <RoleLine role="村人">1人の人狼を投票で当てたら勝ち</RoleLine>
+        <RoleLine role="人狼">投票で当てられなければ勝ち。同票も人狼の勝ち</RoleLine>
       </RuleBlock>
 
-      <RuleBlock title="1日の流れ">
+      <RuleBlock title="1ゲームの流れ">
         <Step n={1}>テーマ発表</Step>
         <Step n={2}>自分語りタイム（順番は自由）</Step>
         <Step n={3}>犯人探しタイム（時間内に議論）</Step>
-        <Step n={4}>投票して1人を追放</Step>
-        <Step n={5}>勝敗がつくまで翌日へ</Step>
+        <Step n={4}>全員で一斉に指さし投票</Step>
+        <Step n={5}>最多票の1人を選んで勝敗発表</Step>
       </RuleBlock>
 
       <RuleBlock title="コツ">
         <Line>
           具体的に話しすぎると嘘がバレます。逆に曖昧すぎても疑われます。
-          誰も追放しない選択もできます。
+          脱落はありません。次のゲームでは全員の役を引き直します。
         </Line>
       </RuleBlock>
     </>

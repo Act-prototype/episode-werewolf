@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { View, Text, Image, StyleSheet } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Alert, View, Text, Image, StyleSheet } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import { Screen } from "@/components/Screen";
@@ -20,17 +20,31 @@ export default function RoleReveal() {
   const [state, setState] = useState<GameState | null>(null);
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     (async () => {
-      const saved = await loadGameState();
-      if (!saved) return router.replace("/mode-select");
-      if (!saved.players[0].role) {
-        const roles = assignRoles(saved.players.length, saved.werewolfCount);
-        saved.players = saved.players.map((p, i) => ({ ...p, role: roles[i] }));
-        await saveGameState(saved);
+      try {
+        const saved = await loadGameState();
+        if (!saved) return router.replace("/mode-select");
+        if (saved.currentPhase !== "roleReveal") return router.replace("/game");
+        if (saved.players.every((player) => player.role === null)) {
+          const roles = assignRoles(saved.players.length, 1);
+          saved.players = saved.players.map((p, i) => ({ ...p, role: roles[i] }));
+          await saveGameState(saved);
+        }
+        const nextIndex = saved.players.findIndex((player) => !player.hasSeenRole);
+        if (nextIndex === -1) {
+          await saveGameState({ ...saved, currentPhase: "episodeAnnouncement" });
+          return router.replace("/game");
+        }
+        setIndex(nextIndex);
+        setState(saved);
+      } catch {
+        Alert.alert("読み込めませんでした", "もう一度お試しください。");
+        router.replace("/mode-select");
       }
-      setState(saved);
     })();
   }, []);
 
@@ -45,17 +59,25 @@ export default function RoleReveal() {
   };
 
   const next = async () => {
-    const players = [...state.players];
-    players[index] = { ...players[index], hasSeenRole: true };
-    if (isLast) {
-      await saveGameState({ ...state, players, currentPhase: "episodeAnnouncement" });
-      router.replace("/game");
-    } else {
-      const updated = { ...state, players };
+    if (savingRef.current || !revealed) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      const players = state.players.map((p, i) => i === index ? { ...p, hasSeenRole: true } : p);
+      const updated: GameState = { ...state, players, currentPhase: isLast ? "episodeAnnouncement" : "roleReveal" };
       await saveGameState(updated);
-      setState(updated);
-      setIndex(index + 1);
-      setRevealed(false);
+      if (isLast) {
+        router.replace("/game");
+      } else {
+        setRevealed(false);
+        setState(updated);
+        setIndex(index + 1);
+      }
+    } catch {
+      Alert.alert("保存できませんでした", "もう一度お試しください。");
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   };
 
@@ -88,8 +110,8 @@ export default function RoleReveal() {
 
             <View style={styles.rules}>
               {(player.role === "人狼"
-                ? ["うそのエピソードをはなす", "正体がバレないように演技", "村人と同数以上で勝ち"]
-                : ["ほんとうにあったハナシをはなす", "人狼をみつける", "全ての人狼を追放したら勝ち"]
+                ? ["うそのエピソードをはなす", "正体がバレないように演技", "投票で見破られなければ勝ち"]
+                : ["ほんとうにあったハナシをはなす", "人狼をみつける", "1回の投票で人狼を当てたら勝ち"]
               ).map((line) => (
                 <Text key={line} style={styles.rule}>
                   {line}
@@ -100,6 +122,7 @@ export default function RoleReveal() {
             <SketchButton
               label={isLast ? "ゲームをはじめる" : "わかったよ..."}
               onPress={next}
+              disabled={saving}
               style={styles.button}
             />
           </Animated.View>

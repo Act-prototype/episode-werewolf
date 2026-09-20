@@ -26,6 +26,8 @@ export interface EpisodeTopic {
 }
 
 export interface GameState {
+  rulesVersion: 2;
+  accusedPlayerId: number | null;
   players: Player[];
   werewolfCount: number;
   selectedTheme: string;
