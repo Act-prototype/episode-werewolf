@@ -13,7 +13,7 @@ import { SketchStepper } from "@/components/sketch/SketchStepper";
 import { useTopicStore } from "@/game/TopicStore";
 import { episodeThemes, getRandomTopic, SHUFFLE_THEME } from "@/game/episodeThemes";
 import { saveGameState, saveNormalSetup, loadNormalSetup, loadGameState } from "@/game/storage";
-import { createNormalGame } from "@/game/gameLogic";
+import { clampWerewolfCount, createNormalGame } from "@/game/gameLogic";
 import { colors, space, type } from "@/theme/tokens";
 
 const MAX_PLAYERS = 20;
@@ -25,6 +25,7 @@ export default function Setup() {
   const store = useTopicStore();
   // 「プレイヤー」は参加者の総数。人狼はその内数（村人 = プレイヤー - 人狼）。
   const [playerCount, setPlayerCount] = useState(5);
+  const [werewolfCount, setWerewolfCount] = useState(1);
   const savingRef = useRef(false);
   const [saving, setSaving] = useState(false);
   const [choosingTheme, setChoosingTheme] = useState(false);
@@ -47,6 +48,7 @@ export default function Setup() {
         const saved = await loadNormalSetup();
         if (saved) {
           setPlayerCount(saved.playerCount);
+          setWerewolfCount(clampWerewolfCount(saved.playerCount, saved.werewolfCount));
           setNames(saved.names);
         }
         setSelectedTheme(getRandomTopic(store.availableCategories).category);
@@ -62,6 +64,7 @@ export default function Setup() {
   const updatePlayers = (next: number) => {
     setPlayerCount(next);
     resizeNames(next);
+    setWerewolfCount((count) => clampWerewolfCount(next, count));
   };
 
   const handleName = (index: number, name: string) =>
@@ -78,10 +81,11 @@ export default function Setup() {
         return;
       }
       const theme = selectedTheme === SHUFFLE_THEME || store.availableCategories.includes(selectedTheme) ? selectedTheme : episodeThemes[0].category;
-      await saveNormalSetup({ playerCount, werewolfCount: 1, selectedTheme: theme, names });
+      await saveNormalSetup({ playerCount, werewolfCount, selectedTheme: theme, names });
       const state = createNormalGame({
         playerNames: Array.from({ length: playerCount }, (_, i) => names[i] || defaultPlayerName(i)),
         selectedTheme: theme,
+        werewolfCount,
       });
       await saveGameState(state);
       router.push("/role-reveal");
@@ -125,7 +129,14 @@ export default function Setup() {
             max={MAX_PLAYERS}
             onChange={updatePlayers}
           />
-          <Text style={styles.ruleNote}>人狼は1人。全員で投票。{"\n"}負けるたびグラスが1杯。少ない人ほど上位。</Text>
+          <SketchStepper
+            label="人狼"
+            value={werewolfCount}
+            min={1}
+            max={playerCount - 2}
+            onChange={setWerewolfCount}
+          />
+          <Text style={styles.ruleNote}>全員で投票。人狼を1人でも当てたら村人の勝ち。{"\n"}負けるたびグラスが1杯。少ない人ほど上位。</Text>
         </SketchFrame>
 
         <SketchFrame style={styles.section} contentStyle={styles.group}>

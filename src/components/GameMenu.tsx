@@ -201,7 +201,7 @@ function NormalRules() {
       </RuleBlock>
 
       <RuleBlock title="役職と勝ち">
-        <RoleLine role="村人">1人の人狼を投票で当てたら勝ち</RoleLine>
+        <RoleLine role="村人">人狼を投票で1人でも当てたら勝ち</RoleLine>
         <RoleLine role="人狼">村人が選ばれたら勝ち。同票・追放なしは勝敗なし</RoleLine>
       </RuleBlock>
 

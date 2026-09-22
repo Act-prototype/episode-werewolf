@@ -30,7 +30,7 @@ export default function RoleReveal() {
         if (!saved) return router.replace("/mode-select");
         if (saved.currentPhase !== "roleReveal") return router.replace("/game");
         if (saved.players.every((player) => player.role === null)) {
-          const roles = assignRoles(saved.players.length, 1);
+          const roles = assignRoles(saved.players.length, saved.werewolfCount);
           saved.players = saved.players.map((p, i) => ({ ...p, role: roles[i] }));
           await saveGameState(saved);
         }
@@ -111,7 +111,7 @@ export default function RoleReveal() {
             <View style={styles.rules}>
               {(player.role === "人狼"
                 ? ["うそのエピソードをはなす", "正体がバレないように演技", "投票で村人が選ばれたら勝ち"]
-                : ["ほんとうにあったハナシをはなす", "人狼をみつける", "1回の投票で人狼を当てたら勝ち"]
+                : ["ほんとうにあったハナシをはなす", "人狼をみつける", "投票で人狼を1人でも当てたら勝ち"]
               ).map((line) => (
                 <Text key={line} style={styles.rule}>
                   {line}

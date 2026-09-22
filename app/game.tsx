@@ -146,7 +146,7 @@ export default function Game() {
 
   const topic = state.currentTopic;
   const accused = state.players.find((player) => player.id === state.accusedPlayerId);
-  const wolf = state.players.find((player) => player.role === "人狼");
+  const wolfNames = state.players.filter((player) => player.role === "人狼").map((player) => player.name).join("・");
 
   // 勝敗発表の2グループ。役職未割当(null)はどちらにも入れない
   const winners = state.players.filter((p) => p.role !== null && p.role === state.winner);
@@ -250,7 +250,7 @@ export default function Game() {
               <SketchOptionRow label="今回は誰も追放しない" selected={vote === "tie"}
                 onPress={() => { if (!savingRef.current) setVote("tie"); }} />
             </View>
-            <Text style={styles.phaseLead}>人狼を当てたら村人の勝ち。{"\n"}外れなら人狼の勝ち。同票は追放せず、加点なしで次のお題へ。</Text>
+            <Text style={styles.phaseLead}>人狼を1人でも当てたら村人の勝ち。{"\n"}外れなら人狼の勝ち。同票は追放せず、加点なしで次のお題へ。</Text>
             <SketchButton label="結果発表へ" onPress={transition} disabled={saving || vote === null} style={styles.cta} />
           </Animated.View>
         )}
@@ -290,7 +290,7 @@ export default function Game() {
             />
 
             <Text style={styles.phaseLead}>{accused ? `投票で選ばれたのは ${accused.name}` : "保存されていた前回の結果"}</Text>
-            <Text style={styles.phaseTitle}>人狼は {wolf?.name} でした</Text>
+            <Text style={styles.phaseTitle}>人狼は {wolfNames} でした</Text>
 
             {/* 勝者は上下の手書きアーチで囲う */}
             <SketchFrame style={styles.fullWidth} contentStyle={styles.winnerFrameInner}>
