@@ -53,15 +53,12 @@ export default function NormalSummary() {
   return (
     <Screen scroll contentContainerStyle={styles.content}>
       <Text style={styles.title}>全体集計</Text>
-      <Text style={styles.lead}>このメンバーで {state.session.completedRounds}ゲーム</Text>
-      <Text style={styles.lead}>負けるたびにグラスが1杯。{"\n"}少ない人ほど上位です。</Text>
       <SketchDivider weight="medium" width={180} height={5} style={styles.divider} />
       {state.session.completedRounds === 0 && <Text style={styles.lead}>まだ結果が確定したゲームはありません。</Text>}
       <SketchFrame contentStyle={styles.results}>
         <ResultGrid players={standings.map(row => state.players[row.id])} points={state.session.lossPoints}
           ranks={state.session.completedRounds > 0 ? Object.fromEntries(standings.map(row => [row.id, `${row.tied ? "同率" : ""}${row.rank}位`])) : undefined} />
       </SketchFrame>
-      <Text style={styles.note}>1杯 = 1負けポイント。途中でやめたゲームは集計しません。</Text>
       <View style={styles.actions}>
         <SketchButton label="メンバーを変える" onPress={() => void leave("/setup-normal")} disabled={saving} />
         <Text style={styles.note}>新しいメンバーでは全員0杯からスタート。</Text>
