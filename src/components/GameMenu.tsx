@@ -1,5 +1,5 @@
-import { useState, ReactNode } from "react";
-import { View, Text, Image, StyleSheet, Modal, Pressable, ScrollView } from "react-native";
+import { useRef, useState, ReactNode } from "react";
+import { Alert, View, Text, Image, StyleSheet, Modal, Pressable, ScrollView } from "react-native";
 import Animated, { SlideInRight, SlideOutRight, FadeIn, FadeOut, ZoomIn } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import { PressableScale } from "./PressableScale";
@@ -9,34 +9,53 @@ import { SketchDivider } from "./sketch/SketchDivider";
 import { SketchNumber } from "./sketch/SketchNumber";
 import { SketchOptionRow } from "./sketch/SketchOptionRow";
 import { RoleArt } from "./sketch/RoleArt";
-import { clearAll } from "@/game/storage";
+import { clearCardState, loadGameState, saveGameState } from "@/game/storage";
+import { finishNormalSession } from "@/game/gameLogic";
 import { sketch } from "@/theme/sketchAssets";
 import { colors, radius, space, type } from "@/theme/tokens";
 
 interface Props {
   mode: "normal" | "card";
   showRules?: boolean;
+  disabled?: boolean;
 }
 
 /**
  * 右上のハンバーガー → 紙の上に開くメニュー。
  * 本文と同じ紙・インクの語彙で組み、区切りは手書きの罫線を使う。
  */
-export function GameMenu({ mode, showRules = true }: Props) {
+export function GameMenu({ mode, showRules = true, disabled = false }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [rules, setRules] = useState(false);
 
+  const busy = useRef(false);
+  const [saving, setSaving] = useState(false);
   const goHome = async () => {
-    await clearAll();
-    setConfirm(false);
-    router.replace("/mode-select");
+    if (disabled || busy.current) return;
+    busy.current = true;
+    setSaving(true);
+    try {
+      if (mode === "normal") {
+        const saved = await loadGameState();
+        if (saved) {
+          await saveGameState(finishNormalSession(saved));
+          setConfirm(false);
+          router.replace("/normal-summary");
+          return;
+        }
+      } else await clearCardState();
+      setConfirm(false);
+      router.replace("/mode-select");
+    } catch {
+      Alert.alert("保存できませんでした", "もう一度お試しください。");
+    } finally { busy.current = false; setSaving(false); }
   };
 
   return (
     <>
-      <PressableScale onPress={() => setOpen(true)} style={styles.hamburger}>
+      <PressableScale accessibilityRole="button" accessibilityLabel="メニューを開く" disabled={disabled || saving} onPress={() => setOpen(true)} style={styles.hamburger}>
         <Image source={sketch.iconMenu} style={styles.hamburgerIcon} resizeMode="contain" />
       </PressableScale>
 
@@ -63,7 +82,7 @@ export function GameMenu({ mode, showRules = true }: Props) {
                 />
               )}
               <SketchOptionRow
-                label="ホームに戻る"
+                label={mode === "normal" ? "終了して全体集計を見る" : "ホームに戻る"}
                 onPress={() => {
                   setOpen(false);
                   setConfirm(true);
@@ -92,12 +111,12 @@ export function GameMenu({ mode, showRules = true }: Props) {
           <Animated.View entering={ZoomIn} style={styles.dialog}>
             <PaperBackground />
             <View style={styles.dialogBody}>
-              <Text style={styles.dialogTitle}>ホームに戻る？</Text>
+              <Text style={styles.dialogTitle}>{mode === "normal" ? "ここでゲームを終える？" : "ホームに戻る？"}</Text>
               <SketchDivider weight="fine" width={140} height={3} style={styles.centered} />
-              <Text style={styles.dialogText}>いままでの進行は消えます</Text>
+              <Text style={styles.dialogText}>{mode === "normal" ? "ここまでの結果を集計します。途中のゲームは集計しません。" : "いままでの進行は消えます"}</Text>
 
               <View style={styles.dialogActions}>
-                <SketchButton label="戻る" onPress={goHome} />
+                <SketchButton label={mode === "normal" ? "全体集計を見る" : "戻る"} onPress={goHome} disabled={disabled || saving} />
                 <SketchOptionRow label="やめる" onPress={() => setConfirm(false)} />
               </View>
             </View>
@@ -192,6 +211,11 @@ function NormalRules() {
         <Step n={3}>犯人探しタイム（時間内に議論）</Step>
         <Step n={4}>全員で一斉に指さし投票</Step>
         <Step n={5}>最多票の1人を選んで勝敗発表</Step>
+      </RuleBlock>
+
+      <RuleBlock title="グラスと全体集計">
+        <Line>負けた陣営の各メンバーに、グラスが1杯ずつ増えます。1杯が1負けポイント。少ない人ほど上位で、同じ杯数は同率です。</Line>
+        <Line>同じメンバーで続ける間は累計を引き継ぎます。終了すると全体集計が見られ、メンバーを変えたら全員0杯から始まります。</Line>
       </RuleBlock>
 
       <RuleBlock title="コツ">

@@ -24,7 +24,7 @@ function loader(mocks = {}, math = Math) {
   return load;
 }
 const load = loader();
-const { createNormalGame, resolveNormalRound, normalizeNormalGame } = load('src/game/gameLogic.ts');
+const { createNormalGame, resolveNormalRound, normalizeNormalGame, replayNormalGame, finishNormalSession, getNormalStandings } = load('src/game/gameLogic.ts');
 const themes = load('src/game/episodeThemes.ts');
 const names = ['あおい', 'なお', 'はる', 'ゆう', 'そら'];
 const fresh = (overrides = {}) => createNormalGame({ playerNames: names, selectedTheme: themes.FREE_CATEGORIES[0], ...overrides });
@@ -127,6 +127,79 @@ async function main() {
     assert.equal(data.get('cardState'), 'unchanged'); assert.equal(data.get('normalSetup'), 'unchanged');
     for (const raw of ['{broken', 'null', '{"players":[]}']) { data.set('gameState', raw); assert.equal(await storage.loadGameState(), null); }
     assert.deepEqual(writes, ['gameState']);
+  });
+  await test('敗者だけに1杯を加算し、同票でも勝った人狼には加算しない', () => {
+    for (const [accused, expected] of [[0, [1,0,0,0,0]], [1, [0,1,1,1,1]], [null, [0,1,1,1,1]]]) {
+      const before = voting(), result = resolveNormalRound(before, accused);
+      assert.equal(result.session.completedRounds, 1);
+      assert.deepEqual(plain(result.session.lossPoints), expected);
+      assert.deepEqual(plain(before.session.lossPoints), [0,0,0,0,0]);
+      const restored = normalizeNormalGame(plain(result));
+      assert.deepEqual(plain(restored.session), plain(result.session));
+      assert.deepEqual(plain(normalizeNormalGame(restored).session), plain(result.session));
+    }
+  });
+  await test('役が変わっても同じメンバーの累計を引き継ぎ、再戦時に加点しない', () => {
+    const first = resolveNormalRound({ ...voting(), selectedTheme: themes.CUSTOM_THEME, customTopic: '自作のお題' }, 0);
+    const next = replayNormalGame(first);
+    assertFresh(next);
+    assert.deepEqual(plain(next.session), { completedRounds: 1, lossPoints: [1,0,0,0,0] });
+    assert.equal(next.customTopic, '自作のお題');
+    assert.notEqual(next.session.lossPoints, first.session.lossPoints);
+    const second = resolveNormalRound({ ...next, currentPhase: 'voting', players: next.players.map(p => ({ ...p, role: p.id === 1 ? '人狼' : '村人', hasSeenRole: true })) }, null);
+    assert.deepEqual(plain(second.session), { completedRounds: 2, lossPoints: [2,0,1,1,1] });
+    assert.deepEqual(plain(first.session.lossPoints), [1,0,0,0,0]);
+    assert.throws(() => replayNormalGame(voting()));
+  });
+  await test('集計は確定済みゲームだけで、途中終了・再表示で加点しない', () => {
+    const first = resolveNormalRound(voting(), 0);
+    const unfinished = replayNormalGame(first);
+    const ended = finishNormalSession(unfinished);
+    assert.equal(ended.currentPhase, 'sessionSummary');
+    assert.equal(normalizeNormalGame(ended), ended);
+    assert.deepEqual(plain(ended.session), plain(first.session));
+    assert.deepEqual(plain(finishNormalSession(ended).session), plain(first.session));
+    assert.deepEqual(plain(replayNormalGame(ended).session), plain(first.session));
+    const zero = finishNormalSession(fresh());
+    assert.equal(normalizeNormalGame(zero), zero);
+    assert.deepEqual(plain(zero.session), { completedRounds: 0, lossPoints: [0,0,0,0,0] });
+  });
+  await test('同名の参加者も別集計し、少ない順・同率順位で表示する', () => {
+    const state = fresh({ playerNames: ['同じ名前','同じ名前','C','D','E'] });
+    state.session = { completedRounds: 3, lossPoints: [2,0,1,0,3] };
+    const rows = plain(getNormalStandings(state));
+    assert.deepEqual(rows.map(r => r.id), [1,3,2,0,4]);
+    assert.deepEqual(rows.map(r => r.rank), [1,1,3,4,5]);
+    assert.deepEqual(rows.map(r => r.tied), [true,true,false,false,false]);
+    assert.equal(rows[0].name, rows[3].name);
+    assert.notEqual(rows[0].points, rows[3].points);
+  });
+  await test('ポイント導入前の保存は直近の確定結果だけを一度集計する', () => {
+    const legacy = resolveNormalRound(voting(), 0); delete legacy.session;
+    const migrated = normalizeNormalGame(legacy);
+    assert.deepEqual(plain(migrated.session), { completedRounds: 1, lossPoints: [1,0,0,0,0] });
+    assert.equal(normalizeNormalGame(migrated), migrated);
+    const ongoing = voting(); delete ongoing.session;
+    assert.deepEqual(plain(normalizeNormalGame(ongoing).session), { completedRounds: 0, lossPoints: [0,0,0,0,0] });
+    for (const session of [null, {}, { completedRounds: -1, lossPoints: [0,0,0,0,0] }, { completedRounds: 2, lossPoints: [3,0,0,0,0] }, { completedRounds: 2, lossPoints: [0,0] }]) {
+      assert.deepEqual(plain(normalizeNormalGame({ ...ongoing, session }).session), { completedRounds: 0, lossPoints: [0,0,0,0,0] });
+    }
+  });
+  await test('保存失敗の再試行で二重加点せず、新メンバーでは0杯に戻る', async () => {
+    const original = voting(); const data = new Map([['gameState', JSON.stringify(original)]]); let fail = true;
+    const storage = loader({ '@react-native-async-storage/async-storage': { __esModule: true, default: {
+      getItem: async key => data.get(key) ?? null,
+      setItem: async (key,value) => { if (fail) { fail = false; throw new Error('write failed'); } data.set(key,value); },
+      removeItem: async key => data.delete(key),
+    } } })('src/game/storage.ts');
+    await assert.rejects(storage.saveGameState(resolveNormalRound(original, 0)));
+    const reloaded = await storage.loadGameState();
+    assert.deepEqual(plain(reloaded.session), plain(original.session));
+    await storage.saveGameState(resolveNormalRound(reloaded, 0));
+    assert.deepEqual(plain((await storage.loadGameState()).session), { completedRounds: 1, lossPoints: [1,0,0,0,0] });
+    await storage.clearGameState(); assert.equal(await storage.loadGameState(), null);
+    const newMembers = fresh({ playerNames: ['A','B','C'] });
+    assert.deepEqual(plain(newMembers.session), { completedRounds: 0, lossPoints: [0,0,0] });
   });
   console.log(`${count} normal-game tests passed.`);
 }

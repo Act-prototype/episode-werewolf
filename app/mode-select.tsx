@@ -25,7 +25,7 @@ export default function ModeSelection() {
             "テーマのエピソードを話す",
             "みんなで誰が人狼か話し合う",
             "1回の投票で決着、次も全員参加",
-            "勝敗が決まるまで繰り返す",
+            "負けるたびグラスが増え、最後に全体集計",
           ]}
           buttonLabel="ノーマルモードでプレイ"
           buttonVariant="blue"
