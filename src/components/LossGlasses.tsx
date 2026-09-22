@@ -1,10 +1,10 @@
-import { View, Text, StyleSheet } from "react-native";
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import { Image, View, Text, StyleSheet } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { colors, space, type } from "@/theme/tokens";
 
 // 小さい画面でも数が読み取れるよう、6杯までを積み、残りは数字で示す。
 const POSITIONS = [[28, 0], [0, 0], [56, 0], [14, 24], [42, 24], [28, 48]];
+const beerGlass = require("../../assets/sketch/art-beer-glass.png");
 
 export function LossGlasses({ points, added = false }: { points: number; added?: boolean }) {
   const visible = Math.min(points, POSITIONS.length);
@@ -15,7 +15,7 @@ export function LossGlasses({ points, added = false }: { points: number; added?:
       <View style={[styles.stack, { height }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         {visible === 0 ? <Text style={styles.empty}>—</Text> : POSITIONS.slice(0, visible).map(([left, bottom], i) => (
           <Animated.View key={i} entering={added && i === visible - 1 ? FadeInDown.duration(350) : undefined} style={{ position: "absolute", left, bottom }}>
-            <MaterialCommunityIcons name="beer-outline" size={28} color={colors.ink} />
+            <Image source={beerGlass} style={styles.glass} resizeMode="contain" accessible={false} />
           </Animated.View>
         ))}
       </View>
@@ -28,6 +28,8 @@ export function LossGlasses({ points, added = false }: { points: number; added?:
 const styles = StyleSheet.create({
   root: { alignItems: "center", gap: space.xs },
   stack: { width: 84, alignItems: "center", justifyContent: "center" },
+  // 原画の透過余白を含めて32pxで描き、輪郭は従来と同じ約28pxに収める。
+  glass: { width: 32, height: 32, marginHorizontal: -2, marginVertical: -2 },
   added: { ...type.small, color: colors.wolf },
   empty: { ...type.title, color: colors.inkFaint },
   extra: { ...type.caption, color: colors.inkSub },
