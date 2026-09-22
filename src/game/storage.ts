@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { GameState } from "./types";
-import { normalizeNormalGame } from "./gameLogic";
+import { normalizeNormalGame, restartNormalSession } from "./gameLogic";
 
 /**
  * Web版の localStorage("gameState" / "cardState") を AsyncStorage に置き換えたもの。
@@ -82,4 +82,13 @@ export async function loadNormalSetup(): Promise<NormalSetup | null> {
  */
 export async function clearAll(): Promise<void> {
   await AsyncStorage.multiRemove([GAME_KEY, CARD_KEY]);
+}
+
+/** 保存済みの集計から新セッションを一度に書き込み、失敗時は旧集計を残す。 */
+export async function restartSavedNormalSession(): Promise<GameState> {
+  const state = await loadGameState();
+  if (!state) throw new Error("集計が見つかりません。");
+  const next = restartNormalSession(state);
+  await saveGameState(next);
+  return next;
 }

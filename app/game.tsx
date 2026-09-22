@@ -13,14 +13,15 @@ import { SketchFrame } from "@/components/sketch/SketchFrame";
 import { SketchQuote } from "@/components/sketch/SketchQuote";
 import { ThemeFrame } from "@/components/sketch/ThemeFrame";
 import { SketchOptionRow } from "@/components/sketch/SketchOptionRow";
-import { LossGlasses } from "@/components/LossGlasses";
+import { ResultGrid } from "@/components/ResultGrid";
+import { SketchStretch } from "@/components/sketch/SketchStretch";
 import { GameThemeControls } from "@/components/GameThemeControls";
 import { useTopicStore } from "@/game/TopicStore";
 import { haptics } from "@/components/haptics";
-import { GameState, Player } from "@/game/types";
-import { replayNormalGame, resolveNormalRound, finishNormalSession } from "@/game/gameLogic";
+import { GameState } from "@/game/types";
+import { replayNormalGame, resolveNormalRound, finishNormalSession, showNormalRoundResult, continueNormalAfterDraw } from "@/game/gameLogic";
 import { getTopicForTheme, CUSTOM_THEME } from "@/game/episodeThemes";
-import { discussionQuote, episodeQuote } from "@/game/quotes";
+import { discussionQuote, episodeQuote, PEACEFUL_MORNING } from "@/game/quotes";
 import { loadGameState, saveGameState } from "@/game/storage";
 import { sketch } from "@/theme/sketchAssets";
 import { colors, space, type } from "@/theme/tokens";
@@ -122,6 +123,14 @@ export default function Game() {
         void persist(resolveNormalRound(state, vote === "tie" ? null : vote));
         haptics.reveal();
         break;
+      case "voteResult":
+        void persist(showNormalRoundResult(state));
+        break;
+      case "peacefulMorning": {
+        const next = continueNormalAfterDraw(state);
+        void persist({ ...next, currentTopic: getTopicForTheme(next.selectedTheme, availableCategories, next.customTopic) });
+        break;
+      }
     }
   };
 
@@ -157,7 +166,7 @@ export default function Game() {
         {state.currentPhase === "episodeAnnouncement" && (
           <Animated.View entering={FadeIn.duration(220)} style={styles.stack}>
             <Text style={styles.phaseTitle}>テーマ発表</Text>
-            <Text style={styles.phaseLead}>全員で話して、1回の投票で決着。</Text>
+            <Text style={styles.phaseLead}>全員で話して、人狼を見つけよう。</Text>
 
             <ThemeFrame category={topic?.category} topic={topic?.topic} withCat />
 
@@ -238,11 +247,36 @@ export default function Game() {
                 <SketchOptionRow key={player.id} label={player.name} selected={vote === player.id}
                   onPress={() => { if (!savingRef.current) setVote(player.id); }} />
               ))}
-              <SketchOptionRow label="最多票が同票だった" selected={vote === "tie"}
+              <SketchOptionRow label="今回は誰も追放しない" selected={vote === "tie"}
                 onPress={() => { if (!savingRef.current) setVote("tie"); }} />
             </View>
-            <Text style={styles.phaseLead}>人狼を当てたら村人の勝ち。{"\n"}外れ・同票なら人狼の勝ち。</Text>
+            <Text style={styles.phaseLead}>人狼を当てたら村人の勝ち。{"\n"}外れなら人狼の勝ち。同票は追放せず、加点なしで次のお題へ。</Text>
             <SketchButton label="結果発表へ" onPress={transition} disabled={saving || vote === null} style={styles.cta} />
+          </Animated.View>
+        )}
+
+        {/* 旧UIの正体発表。脱落は発生せず、次のゲームも全員で遊ぶ。 */}
+        {state.currentPhase === "voteResult" && accused && (
+          <Animated.View entering={FadeIn.duration(260)} style={[styles.stack, styles.fill]}>
+            <View style={styles.resultLabel}>
+              <SketchStretch name="box" height={46} style={StyleSheet.absoluteFill} />
+              <Text style={styles.resultLabelText}>結果発表</Text>
+            </View>
+            <Text style={styles.elimName}>{accused.name}が選ばれた....</Text>
+            <RoleArt role={accused.role!} size={210} variant={accused.id} style={styles.elimArt} />
+            <View style={styles.spacer} />
+            <Text style={styles.verdict}>こいつは<Text style={{ color: accused.role === "人狼" ? colors.wolf : colors.villager }}>【{accused.role}】</Text>だった</Text>
+            <SketchButton label="次へ" onPress={transition} disabled={saving} style={styles.cta} />
+          </Animated.View>
+        )}
+        {state.currentPhase === "peacefulMorning" && (
+          <Animated.View entering={FadeIn.duration(260)} style={[styles.stack, styles.fill]}>
+            <Text style={styles.morning}>{PEACEFUL_MORNING}</Text>
+            <Image source={sketch.artDawnHill} style={styles.dawn} resizeMode="contain" />
+            <View style={styles.spacer} />
+            <Text style={styles.noVerdict}>昨夜は誰も裁かれなかった...</Text>
+            <Text style={styles.phaseLead}>勝敗なし・加点なし。配役はそのまま、次のお題へ。</Text>
+            <SketchButton label="次のテーマへ" onPress={transition} disabled={saving} style={styles.cta} />
           </Animated.View>
         )}
 
@@ -255,7 +289,7 @@ export default function Game() {
               resizeMode="contain"
             />
 
-            <Text style={styles.phaseLead}>{accused ? `投票で選ばれたのは ${accused.name}` : "最多票が同票になったため、人狼の勝ち"}</Text>
+            <Text style={styles.phaseLead}>{accused ? `投票で選ばれたのは ${accused.name}` : "保存されていた前回の結果"}</Text>
             <Text style={styles.phaseTitle}>人狼は {wolf?.name} でした</Text>
 
             {/* 勝者は上下の手書きアーチで囲う */}
@@ -276,30 +310,6 @@ export default function Game() {
         )}
       </ScrollView>
     </Screen>
-  );
-}
-
-/**
- * 勝敗発表の2列グリッド。役職イラストとプレイヤー名を並べる。
- *
- * イラストは役職ごとに縦横比が違う（チワワ0.69・ポメ0.99）ので、枠の寸法は
- * 揃えたうえで fill（contain）で内側に収める。横長の絵ほど小さく収まる。
- */
-function ResultGrid({ players, points, lost = false }: { players: Player[]; points: number[]; lost?: boolean }) {
-  return (
-    <View style={styles.resultGrid}>
-      {players.map((p) => (
-        <View key={p.id} style={styles.resultCard}>
-          <View style={styles.resultCardBox}>
-            {p.role && <RoleArt role={p.role} fill variant={p.id} />}
-          </View>
-          <Text style={styles.resultCardName} numberOfLines={1}>
-            {p.name}
-          </Text>
-          <LossGlasses points={points[p.id]} added={lost} />
-        </View>
-      ))}
-    </View>
   );
 }
 
@@ -357,6 +367,28 @@ const styles = StyleSheet.create({
   stepMinus: { width: 24, height: 8 },
   stepPlus: { width: 20, height: 18 },
 
+  // 結果発表
+  resultLabel: {
+    width: "100%",
+    maxWidth: 330,
+    height: 46,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: space["2xl"],
+  },
+  resultLabelText: { ...type.title, color: colors.ink },
+  elimName: { ...type.title, color: colors.ink, marginTop: space["3xl"] },
+  elimArt: { marginVertical: space.sm },
+  verdict: { ...type.display, fontFamily: type.title.fontFamily, color: colors.ink, textAlign: "center" },
+  // 追放なしの締め文はモックでは役職開示より小さい
+  noVerdict: { ...type.title, color: colors.ink, textAlign: "center" },
+  // 朝の情景だけ明朝で組む
+  morning: { ...type.narration, color: colors.ink, textAlign: "center", lineHeight: 32, marginTop: space["4xl"] },
+  dawn: { width: "100%", height: 110, marginTop: space["2xl"] },
+
+  fill: { flex: 1, width: "100%" },
+  spacer: { flex: 1, minHeight: space.xl },
+
   // 投票
   voteList: { width: "100%", gap: space.md, marginTop: space.sm },
 
@@ -367,28 +399,6 @@ const styles = StyleSheet.create({
   // アーチ素材自体が余白を持つので内側の縦パディングは最小でよい
   winnerFrameInner: { paddingVertical: space.sm },
   makeinuArt: { width: 80, height: 29, marginTop: space.md },
-  resultGrid: {
-    width: "100%",
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    // モック実測の間隔55ptに合わせる（トークンの40では詰まりすぎる）
-    columnGap: 55,
-    rowGap: space.xl,
-  },
-  // 34%は枠内側313ptに対し106pt。モック実測の107ptと一致する
-  resultCard: { width: "34%", alignItems: "center", gap: space.md },
-  // 枠はモック実測（107x132pt・線幅1.25pt）。手書き素材ではなく均一な細線
-  resultCardBox: {
-    width: "100%",
-    aspectRatio: 107 / 132,
-    borderWidth: 1.25,
-    borderColor: colors.ink,
-    padding: space.sm,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  resultCardName: { ...type.small, color: colors.ink, textAlign: "center" },
 
   cta: { width: "100%", maxWidth: 320, marginTop: space.xl },
 });

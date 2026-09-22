@@ -202,7 +202,7 @@ function NormalRules() {
 
       <RuleBlock title="役職と勝ち">
         <RoleLine role="村人">1人の人狼を投票で当てたら勝ち</RoleLine>
-        <RoleLine role="人狼">投票で当てられなければ勝ち。同票も人狼の勝ち</RoleLine>
+        <RoleLine role="人狼">村人が選ばれたら勝ち。同票・追放なしは勝敗なし</RoleLine>
       </RuleBlock>
 
       <RuleBlock title="1ゲームの流れ">
@@ -210,12 +210,14 @@ function NormalRules() {
         <Step n={2}>自分語りタイム（順番は自由）</Step>
         <Step n={3}>犯人探しタイム（時間内に議論）</Step>
         <Step n={4}>全員で一斉に指さし投票</Step>
-        <Step n={5}>最多票の1人を選んで勝敗発表</Step>
+        <Step n={5}>最多票の1人を選び、正体発表から勝敗発表へ</Step>
       </RuleBlock>
+
+      <Line>同票なら「今回は誰も追放しない」を選びます。勝敗・加点なしで、同じ配役のまま次のお題へ進みます。</Line>
 
       <RuleBlock title="グラスと全体集計">
         <Line>負けた陣営の各メンバーに、グラスが1杯ずつ増えます。1杯が1負けポイント。少ない人ほど上位で、同じ杯数は同率です。</Line>
-        <Line>同じメンバーで続ける間は累計を引き継ぎます。終了すると全体集計が見られ、メンバーを変えたら全員0杯から始まります。</Line>
+        <Line>同じメンバーで続ける間は累計を引き継ぎます。終了すると全体集計が見られます。「同じメンバーで0杯から」またはメンバー変更で、杯数・ゲーム数をリセットします。</Line>
       </RuleBlock>
 
       <RuleBlock title="コツ">

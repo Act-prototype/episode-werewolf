@@ -110,7 +110,7 @@ export default function RoleReveal() {
 
             <View style={styles.rules}>
               {(player.role === "人狼"
-                ? ["うそのエピソードをはなす", "正体がバレないように演技", "投票で見破られなければ勝ち"]
+                ? ["うそのエピソードをはなす", "正体がバレないように演技", "投票で村人が選ばれたら勝ち"]
                 : ["ほんとうにあったハナシをはなす", "人狼をみつける", "1回の投票で人狼を当てたら勝ち"]
               ).map((line) => (
                 <Text key={line} style={styles.rule}>
