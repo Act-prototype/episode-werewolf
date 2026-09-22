@@ -250,7 +250,7 @@ export default function Game() {
               <SketchOptionRow label="今回は誰も追放しない" selected={vote === "tie"}
                 onPress={() => { if (!savingRef.current) setVote("tie"); }} />
             </View>
-            <Text style={styles.phaseLead}>人狼を1人でも当てたら村人の勝ち。{"\n"}外れなら人狼の勝ち。同票は追放せず、加点なしで次のお題へ。</Text>
+            <Text style={styles.phaseLead}>人狼を1人でも当てたら村人の勝ち。{"\n"}外れなら人狼の勝ち。</Text>
             <SketchButton label="結果発表へ" onPress={transition} disabled={saving || vote === null} style={styles.cta} />
           </Animated.View>
         )}
