@@ -20,16 +20,26 @@ export function assignRoles(playerCount: number, werewolfCount: number): Role[] 
   return roles;
 }
 
-/** 通常モードは1テーマ・1投票で決着する。再戦もここから全員で開始する。 */
-export function createNormalGame({ playerNames, selectedTheme, customTopic }: {
-  playerNames: string[]; selectedTheme: string; customTopic?: string;
+/** 村人を最低2人残す。保存済み設定や参加人数の変更にも同じ範囲を使う。 */
+export function clampWerewolfCount(playerCount: number, werewolfCount: number): number {
+  return Number.isInteger(werewolfCount) ? Math.max(1, Math.min(werewolfCount, playerCount - 2)) : 1;
+}
+
+function hasValidWerewolfCount(playerCount: number, werewolfCount: number): boolean {
+  return Number.isInteger(werewolfCount) && werewolfCount >= 1 && werewolfCount <= playerCount - 2;
+}
+
+/** 投票で人狼を1人でも当てれば村人の勝ち。同票は同じ配役で次のお題へ。 */
+export function createNormalGame({ playerNames, selectedTheme, customTopic, werewolfCount = 1 }: {
+  playerNames: string[]; selectedTheme: string; customTopic?: string; werewolfCount?: number;
 }): GameState {
   if (playerNames.length < 3 || playerNames.length > 20) throw new Error("通常モードは3〜20人で遊べます。");
+  if (!hasValidWerewolfCount(playerNames.length, werewolfCount)) throw new Error("人狼は1人以上、村人は2人以上にしてください。");
   return {
     session: { completedRounds: 0, lossPoints: playerNames.map(() => 0) },
     rulesVersion: 2,
     players: playerNames.map((name, id) => ({ id, name: name || `プレイヤー${id + 1}`, role: null, isAlive: true, hasSeenRole: false, votes: 0 })),
-    werewolfCount: 1,
+    werewolfCount,
     selectedTheme,
     customTopic,
     currentPhase: "roleReveal",
@@ -47,7 +57,9 @@ export function resolveNormalRound(state: GameState, accusedPlayerId: number | n
   if (state.rulesVersion !== 2 || state.currentPhase !== "voting") throw new Error("投票できる状態ではありません。");
   const accused = state.players.find((player) => player.id === accusedPlayerId);
   if (accusedPlayerId !== null && !accused) throw new Error("投票先が見つかりません。");
-  if (state.players.some((player) => !player.role) || state.players.filter((player) => player.role === "人狼").length !== 1) {
+  if (!hasValidWerewolfCount(state.players.length, state.werewolfCount)
+    || state.players.some((player) => player.role !== "村人" && player.role !== "人狼")
+    || state.players.filter((player) => player.role === "人狼").length !== state.werewolfCount) {
     throw new Error("役職を確認してから投票してください。");
   }
   if (accusedPlayerId === null) return { ...state, accusedPlayerId: null, winner: null, currentPhase: "peacefulMorning" };
@@ -75,14 +87,14 @@ export function continueNormalAfterDraw(state: GameState): GameState {
 /** 全体集計からの再スタートは、同じ名前・テーマで0杯の新しい集計を作る。 */
 export function restartNormalSession(state: GameState): GameState {
   if (state.currentPhase !== "sessionSummary") throw new Error("全体集計を確認してください。");
-  return createNormalGame({ playerNames: state.players.map(p => p.name), selectedTheme: state.selectedTheme, customTopic: state.customTopic });
+  return createNormalGame({ playerNames: state.players.map(p => p.name), selectedTheme: state.selectedTheme, customTopic: state.customTopic, werewolfCount: state.werewolfCount });
 }
 
 /** 同じ顔ぶれの再戦はポイントを保ち、役だけを引き直す。 */
 export function replayNormalGame(state: GameState): GameState {
   if (state.currentPhase !== "gameOver" && state.currentPhase !== "sessionSummary") throw new Error("結果を確認してから再戦してください。");
   return {
-    ...createNormalGame({ playerNames: state.players.map((p) => p.name), selectedTheme: state.selectedTheme, customTopic: state.customTopic }),
+    ...createNormalGame({ playerNames: state.players.map((p) => p.name), selectedTheme: state.selectedTheme, customTopic: state.customTopic, werewolfCount: state.werewolfCount }),
     session: { completedRounds: state.session.completedRounds, lossPoints: [...state.session.lossPoints] },
   };
 }
@@ -123,7 +135,7 @@ export function normalizeNormalGame(value: unknown): GameState | null {
   const state = value as GameState;
   if (!Array.isArray(state.players) || state.players.length < 3 || state.players.length > 20 || typeof state.selectedTheme !== "string") return null;
   if (state.players.some((player) => !player || typeof player.name !== "string")) return null;
-  const hasOneWolf = state.players.filter((player) => player.role === "人狼").length === 1
+  const hasMatchingRoles = state.players.filter((player) => player.role === "人狼").length === state.werewolfCount
     && state.players.every((player) => player.role === "村人" || player.role === "人狼");
   const awaitingRoles = ["roleReveal", "sessionSummary"].includes(state.currentPhase) && state.players.every((player) => player.role === null);
   const validPhase = ["roleReveal", "episodeAnnouncement", "episodeTime", "discussion", "voting", "voteResult", "peacefulMorning", "gameOver", "sessionSummary"].includes(state.currentPhase);
@@ -133,6 +145,6 @@ export function normalizeNormalGame(value: unknown): GameState | null {
     && (state.accusedPlayerId === null || state.players.some((player) => player.id === state.accusedPlayerId))
   )) && (state.currentPhase !== "voteResult" || state.accusedPlayerId !== null)
     && (state.currentPhase !== "peacefulMorning" || (state.accusedPlayerId === null && state.winner === null));
-  if (state.rulesVersion === 2 && state.werewolfCount === 1 && validPhase && validPlayers && validResult && (hasOneWolf || awaitingRoles)) return normalizeSession(state);
-  return createNormalGame({ playerNames: state.players.map((player) => player.name), selectedTheme: state.selectedTheme, customTopic: typeof state.customTopic === "string" ? state.customTopic : undefined });
+  if (state.rulesVersion === 2 && hasValidWerewolfCount(state.players.length, state.werewolfCount) && validPhase && validPlayers && validResult && (hasMatchingRoles || awaitingRoles)) return normalizeSession(state);
+  return createNormalGame({ playerNames: state.players.map((player) => player.name), selectedTheme: state.selectedTheme, customTopic: typeof state.customTopic === "string" ? state.customTopic : undefined, werewolfCount: clampWerewolfCount(state.players.length, state.werewolfCount) });
 }

@@ -24,7 +24,7 @@ function loader(mocks = {}, math = Math) {
   return load;
 }
 const load = loader();
-const { createNormalGame, resolveNormalRound, normalizeNormalGame, replayNormalGame, finishNormalSession, getNormalStandings, showNormalRoundResult, continueNormalAfterDraw, restartNormalSession } = load('src/game/gameLogic.ts');
+const { assignRoles, clampWerewolfCount, createNormalGame, resolveNormalRound, normalizeNormalGame, replayNormalGame, finishNormalSession, getNormalStandings, showNormalRoundResult, continueNormalAfterDraw, restartNormalSession } = load('src/game/gameLogic.ts');
 function completeVote(state, id) {
   const result = resolveNormalRound(state, id);
   return result.currentPhase === 'voteResult' ? showNormalRoundResult(result) : result;
@@ -36,9 +36,9 @@ function voting(wolfId = 0) {
   const state = fresh();
   return { ...state, currentPhase: 'voting', players: state.players.map(p => ({ ...p, role: p.id === wolfId ? '人狼' : '村人', hasSeenRole: true })) };
 }
-function assertFresh(state, expectedNames = names) {
+function assertFresh(state, expectedNames = names, expectedWolves = 1) {
   assert.equal(state.rulesVersion, 2); assert.equal(state.currentPhase, 'roleReveal');
-  assert.equal(state.werewolfCount, 1); assert.equal(state.currentDay, 1);
+  assert.equal(state.werewolfCount, expectedWolves); assert.equal(state.currentDay, 1);
   for (const key of ['currentTopic', 'accusedPlayerId', 'eliminatedTonight', 'winner']) assert.equal(state[key], null);
   assert.deepEqual(plain(state.votingResults), {});
   assert.deepEqual(plain(state.players.map(p => p.name)), expectedNames);
@@ -68,6 +68,76 @@ async function main() {
       assert.equal(roles[wolfId], '人狼'); assert.equal(draws.length, 0);
     }
   });
+  await test('3〜20人で選択可能な全人狼数を配役でき、範囲外は拒否・設定は補正する', () => {
+    for (let size = 3; size <= 20; size++) {
+      const playerNames = Array.from({ length: size }, (_, i) => `参加者${i}`);
+      for (let wolves = 1; wolves <= size - 2; wolves++) {
+        const state = fresh({ playerNames, werewolfCount: wolves });
+        assertFresh(state, playerNames, wolves);
+        const roles = assignRoles(size, state.werewolfCount);
+        assert.equal(roles.length, size);
+        assert.equal(roles.filter(r => r === '人狼').length, wolves);
+        assert.equal(roles.filter(r => r === '村人').length, size - wolves);
+      }
+      for (const wolves of [0, -1, 1.5, size - 1, NaN, '2']) assert.throws(() => fresh({ playerNames, werewolfCount: wolves }));
+      assert.equal(clampWerewolfCount(size, 20), size - 2);
+      assert.equal(clampWerewolfCount(size, 0), 1);
+      assert.equal(clampWerewolfCount(size, undefined), 1);
+    }
+  });
+  await test('複数人狼の誰を当てても人狼全員に1杯、村人なら村人全員に1杯', () => {
+    for (let wolves = 2; wolves <= 3; wolves++) {
+      const initial = fresh({ werewolfCount: wolves });
+      const state = { ...initial, currentPhase: 'voting', players: initial.players.map(p => ({ ...p, role: p.id < wolves ? '人狼' : '村人', hasSeenRole: true })) };
+      for (let accused = 0; accused < 5; accused++) {
+        const result = resolveNormalRound(state, accused);
+        assert.equal(result.winner, accused < wolves ? '村人' : '人狼');
+        assert.deepEqual(plain(result.session.lossPoints), state.players.map(p => p.role === result.winner ? 0 : 1));
+        assert.ok(result.players.every(p => p.isAlive));
+        assert.equal(normalizeNormalGame(result), result);
+        const final = showNormalRoundResult(result);
+        assert.equal(normalizeNormalGame(final), final);
+        const replay = replayNormalGame(final);
+        assertFresh(replay, names, wolves);
+        assert.deepEqual(plain(replay.session), plain(final.session));
+        const reset = restartNormalSession(finishNormalSession(final));
+        assertFresh(reset, names, wolves);
+        assert.deepEqual(plain(reset.session), { completedRounds: 0, lossPoints: [0,0,0,0,0] });
+      }
+    }
+  });
+  await test('複数人狼は設定保存・途中再開・同票・再戦・0杯リセットで人数を保持する', async () => {
+    const data = new Map();
+    const storage = loader({ '@react-native-async-storage/async-storage': { __esModule: true, default: {
+      getItem: async key => data.get(key) ?? null,
+      setItem: async (key,value) => data.set(key,value),
+    } } })('src/game/storage.ts');
+    const setup = { playerCount: 5, werewolfCount: 2, names, selectedTheme: themes.FREE_CATEGORIES[0] };
+    await storage.saveNormalSetup(setup);
+    assert.deepEqual(plain(await storage.loadNormalSetup()), setup);
+    let state = fresh({ werewolfCount: (await storage.loadNormalSetup()).werewolfCount });
+    state.players = state.players.map(p => ({ ...p, role: p.id < 2 ? '人狼' : '村人', hasSeenRole: p.id < 3 }));
+    await storage.saveGameState(state);
+    assert.deepEqual(plain(await storage.loadGameState()), plain(state));
+    state = { ...state, currentPhase: 'voting', players: state.players.map(p => ({ ...p, hasSeenRole: true })) };
+    const morning = resolveNormalRound(state, null);
+    await storage.saveGameState(morning);
+    const next = continueNormalAfterDraw(await storage.loadGameState());
+    assert.equal(next.werewolfCount, 2);
+    assert.deepEqual(plain(next.players), plain(state.players));
+    assert.deepEqual(plain(next.session), plain(state.session));
+    await storage.saveGameState(next);
+    assert.deepEqual(plain(await storage.loadGameState()), plain(next));
+    const final = completeVote({ ...next, currentPhase: 'voting' }, 1);
+    await storage.saveGameState(replayNormalGame(final));
+    assertFresh(await storage.loadGameState(), names, 2);
+    await storage.saveGameState(finishNormalSession(final));
+    const reset = await storage.restartSavedNormalSession();
+    assertFresh(reset, names, 2);
+    assert.deepEqual(plain(await storage.loadGameState()), plain(reset));
+    assert.deepEqual(plain(reset.session.lossPoints), [0,0,0,0,0]);
+    assert.equal((await storage.loadNormalSetup()).werewolfCount, 2);
+  });
   await test('正解・不正解は1投票で決着し、脱落させない', () => {
     for (const [wolfId, accused, winner] of [[0, 0, '村人'], [4, 4, '村人'], [0, 1, '人狼']]) {
       const state = voting(wolfId), before = plain(state), result = completeVote(state, accused);
@@ -92,7 +162,7 @@ async function main() {
       delete old.rulesVersion; delete old.accusedPlayerId;
       old.players[1] = { ...old.players[1], role: '人狼', isAlive: false, votes: 2 };
       const before = plain(old), migrated = normalizeNormalGame(old);
-      assertFresh(migrated); assert.equal(migrated.selectedTheme, themes.CUSTOM_THEME);
+      assertFresh(migrated, names, 2); assert.equal(migrated.selectedTheme, themes.CUSTOM_THEME);
       assert.equal(migrated.customTopic, old.customTopic); assert.deepEqual(plain(old), before);
     }
   });
