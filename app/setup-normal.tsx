@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Alert, View, Text, ScrollView, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { Screen } from "@/components/Screen";
-import { ThemePicker } from "@/components/ThemePicker";
+import { SetupThemeSelection } from "@/components/SetupThemeSelection";
+import { SketchBox } from "@/components/sketch/SketchBox";
 import { NameInputList, defaultPlayerName } from "@/components/NameInputList";
 import { GameMenu } from "@/components/GameMenu";
 import { SketchButton } from "@/components/sketch/SketchButton";
@@ -10,7 +11,7 @@ import { SketchDivider } from "@/components/sketch/SketchDivider";
 import { SketchFrame } from "@/components/sketch/SketchFrame";
 import { SketchStepper } from "@/components/sketch/SketchStepper";
 import { useTopicStore } from "@/game/TopicStore";
-import { episodeThemes, CUSTOM_THEME, SHUFFLE_THEME } from "@/game/episodeThemes";
+import { episodeThemes, getRandomTopic, SHUFFLE_THEME } from "@/game/episodeThemes";
 import { saveGameState, saveNormalSetup, loadNormalSetup, loadGameState } from "@/game/storage";
 import { createNormalGame } from "@/game/gameLogic";
 import { colors, space, type } from "@/theme/tokens";
@@ -26,6 +27,7 @@ export default function Setup() {
   const [playerCount, setPlayerCount] = useState(5);
   const savingRef = useRef(false);
   const [saving, setSaving] = useState(false);
+  const [choosingTheme, setChoosingTheme] = useState(false);
   const [selectedTheme, setSelectedTheme] = useState(episodeThemes[0].category);
   const [names, setNames] = useState<string[]>(
     Array.from({ length: 5 }, (_, i) => defaultPlayerName(i))
@@ -34,6 +36,7 @@ export default function Setup() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    if (!store.ready) return;
     (async () => {
       try {
         const ongoing = await loadGameState();
@@ -44,13 +47,13 @@ export default function Setup() {
         const saved = await loadNormalSetup();
         if (saved) {
           setPlayerCount(saved.playerCount);
-          setSelectedTheme(saved.selectedTheme === CUSTOM_THEME ? episodeThemes[0].category : saved.selectedTheme);
           setNames(saved.names);
         }
+        setSelectedTheme(getRandomTopic(store.availableCategories).category);
         setReady(true);
       } catch { setLoadingError(true); }
     })();
-  }, []);
+  }, [store.ready]);
 
   /** 人数が変わったら名前欄の数を合わせる（入力済みの名前は保持） */
   const resizeNames = (total: number) =>
@@ -95,6 +98,10 @@ export default function Setup() {
     <SketchButton label="ホームへ" onPress={() => router.replace("/mode-select")} />
   </View>}</Screen>;
 
+  if (choosingTheme) return <SetupThemeSelection selected={selectedTheme}
+    onSelect={(category) => { setSelectedTheme(category); setChoosingTheme(false); }}
+    onBack={() => setChoosingTheme(false)} />;
+
   return (
     <Screen scroll={false} edges={{ top: true, bottom: true }} avoidKeyboard>
       <View style={styles.menu}>
@@ -118,12 +125,17 @@ export default function Setup() {
             max={MAX_PLAYERS}
             onChange={updatePlayers}
           />
-          <Text style={styles.ruleNote}>人狼は1人。1回の投票で決着。{"\n"}負けるたびグラスが1杯。少ない人ほど上位。</Text>
+          <Text style={styles.ruleNote}>人狼は1人。全員で投票。{"\n"}負けるたびグラスが1杯。少ない人ほど上位。</Text>
         </SketchFrame>
 
         <SketchFrame style={styles.section} contentStyle={styles.group}>
           <SectionTitle label="エピソードテーマ" ruleWidth={161} />
-          <ThemePicker selected={selectedTheme} onSelect={setSelectedTheme} />
+          <View style={styles.themeChoice}>
+            <SketchBox contentStyle={styles.themeBox}>
+              <Text style={styles.themeName}>{selectedTheme === SHUFFLE_THEME ? "ランダム" : selectedTheme}</Text>
+            </SketchBox>
+            <SketchButton label="テーマを変える" variant="blue" height={48} onPress={() => setChoosingTheme(true)} />
+          </View>
         </SketchFrame>
 
         <SketchFrame style={styles.section} contentStyle={styles.group}>
@@ -153,6 +165,9 @@ const styles = StyleSheet.create({
 
   heading: { ...type.display, color: colors.ink, textAlign: "center", marginTop: space["2xl"] },
 
+  themeChoice: { width: "100%", maxWidth: 278, alignSelf: "center", gap: space.sm },
+  themeBox: { alignItems: "center" },
+  themeName: { ...type.title, color: colors.ink, textAlign: "center" },
   section: {},
   steppers: { paddingVertical: space.md, gap: space.xl },
   group: { paddingVertical: space.md, gap: space.lg },

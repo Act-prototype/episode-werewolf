@@ -41,7 +41,7 @@ export function ThemePicker({ selected, onSelect, mode = "setup" }: Props) {
 }
 const styles = StyleSheet.create({
   root: { width: "100%", gap: space.md }, grid: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
-  cell: { width: "48%", minHeight: 52, flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "center", padding: space.sm, gap: space.xs, borderWidth: 1, borderColor: colors.ink300, borderRadius: radius.md },
+  cell: { width: "48%", minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "center", paddingHorizontal: space.sm, paddingVertical: space.xs, gap: space.xs, borderWidth: 1, borderColor: colors.ink300, borderRadius: radius.md },
   active: { backgroundColor: colors.ink, borderColor: colors.ink }, activeText: { color: colors.onInk },
   label: { ...type.small, color: colors.ink, flexShrink: 1 },
   note: { ...type.caption, color: colors.inkSub, lineHeight: 18 },

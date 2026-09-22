@@ -42,7 +42,7 @@ export function createNormalGame({ playerNames, selectedTheme, customTopic }: {
   };
 }
 
-/** nullは最多票が同票だった場合。生存状態を変えず、この投票で終了する。 */
+/** nullは追放なし。同票では勝敗も加点も確定せず、配役を保持する。 */
 export function resolveNormalRound(state: GameState, accusedPlayerId: number | null): GameState {
   if (state.rulesVersion !== 2 || state.currentPhase !== "voting") throw new Error("投票できる状態ではありません。");
   const accused = state.players.find((player) => player.id === accusedPlayerId);
@@ -50,13 +50,32 @@ export function resolveNormalRound(state: GameState, accusedPlayerId: number | n
   if (state.players.some((player) => !player.role) || state.players.filter((player) => player.role === "人狼").length !== 1) {
     throw new Error("役職を確認してから投票してください。");
   }
+  if (accusedPlayerId === null) return { ...state, accusedPlayerId: null, winner: null, currentPhase: "peacefulMorning" };
   const winner: Role = accused?.role === "人狼" ? "村人" : "人狼";
   // 勝敗とポイントを同じ保存データで確定する。画面再表示では加算しない。
   const session = {
     completedRounds: state.session.completedRounds + 1,
     lossPoints: state.players.map((player) => state.session.lossPoints[player.id] + (player.role !== winner ? 1 : 0)),
   };
-  return { ...state, accusedPlayerId, currentPhase: "gameOver", winner, session };
+  return { ...state, accusedPlayerId, currentPhase: "voteResult", winner, session };
+}
+
+/** 正体の発表後に勝敗画面へ。加点済みの結果をそのまま引き継ぐ。 */
+export function showNormalRoundResult(state: GameState): GameState {
+  if (state.currentPhase !== "voteResult" || !state.winner) throw new Error("正体発表を確認してください。");
+  return { ...state, currentPhase: "gameOver" };
+}
+
+/** 追放なしの朝は同じ配役・累計で次のお題へ進む。 */
+export function continueNormalAfterDraw(state: GameState): GameState {
+  if (state.currentPhase !== "peacefulMorning") throw new Error("追放なしの結果ではありません。");
+  return { ...state, currentPhase: "episodeAnnouncement", currentDay: state.currentDay + 1, currentTopic: null };
+}
+
+/** 全体集計からの再スタートは、同じ名前・テーマで0杯の新しい集計を作る。 */
+export function restartNormalSession(state: GameState): GameState {
+  if (state.currentPhase !== "sessionSummary") throw new Error("全体集計を確認してください。");
+  return createNormalGame({ playerNames: state.players.map(p => p.name), selectedTheme: state.selectedTheme, customTopic: state.customTopic });
 }
 
 /** 同じ顔ぶれの再戦はポイントを保ち、役だけを引き直す。 */
@@ -88,10 +107,10 @@ function normalizeSession(state: GameState): GameState {
   const valid = session && Number.isSafeInteger(session.completedRounds) && session.completedRounds >= 0
     && Array.isArray(session.lossPoints) && session.lossPoints.length === state.players.length
     && session.lossPoints.every((points) => Number.isSafeInteger(points) && points >= 0 && points <= session.completedRounds)
-    && (state.currentPhase !== "gameOver" || session.completedRounds > 0);
+    && (!["gameOver", "voteResult"].includes(state.currentPhase) || session.completedRounds > 0);
   if (valid) return state;
   // ポイント導入前は履歴がない。保存されている直近の確定結果だけを集計する。
-  const finished = state.currentPhase === "gameOver";
+  const finished = ["gameOver", "voteResult"].includes(state.currentPhase);
   return { ...state, session: {
     completedRounds: finished ? 1 : 0,
     lossPoints: state.players.map((player) => finished && player.role !== state.winner ? 1 : 0),
@@ -107,12 +126,13 @@ export function normalizeNormalGame(value: unknown): GameState | null {
   const hasOneWolf = state.players.filter((player) => player.role === "人狼").length === 1
     && state.players.every((player) => player.role === "村人" || player.role === "人狼");
   const awaitingRoles = ["roleReveal", "sessionSummary"].includes(state.currentPhase) && state.players.every((player) => player.role === null);
-  const validPhase = ["roleReveal", "episodeAnnouncement", "episodeTime", "discussion", "voting", "gameOver", "sessionSummary"].includes(state.currentPhase);
+  const validPhase = ["roleReveal", "episodeAnnouncement", "episodeTime", "discussion", "voting", "voteResult", "peacefulMorning", "gameOver", "sessionSummary"].includes(state.currentPhase);
   const validPlayers = state.players.every((player, index) => player.id === index && player.isAlive && typeof player.hasSeenRole === "boolean");
-  const validResult = state.currentPhase !== "gameOver" || (
+  const validResult = (!["gameOver", "voteResult"].includes(state.currentPhase) || (
     state.winner === (state.players.find((player) => player.id === state.accusedPlayerId)?.role === "人狼" ? "村人" : "人狼")
     && (state.accusedPlayerId === null || state.players.some((player) => player.id === state.accusedPlayerId))
-  );
+  )) && (state.currentPhase !== "voteResult" || state.accusedPlayerId !== null)
+    && (state.currentPhase !== "peacefulMorning" || (state.accusedPlayerId === null && state.winner === null));
   if (state.rulesVersion === 2 && state.werewolfCount === 1 && validPhase && validPlayers && validResult && (hasOneWolf || awaitingRoles)) return normalizeSession(state);
   return createNormalGame({ playerNames: state.players.map((player) => player.name), selectedTheme: state.selectedTheme, customTopic: typeof state.customTopic === "string" ? state.customTopic : undefined });
 }

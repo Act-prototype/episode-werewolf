@@ -8,6 +8,7 @@ export type GamePhase =
   | "discussion"
   | "voting"
   | "voteResult"
+  | "peacefulMorning"
   | "night"
   | "gameOver"
   | "sessionSummary";
