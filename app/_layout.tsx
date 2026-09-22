@@ -55,6 +55,7 @@ export default function RootLayout() {
           <Stack.Screen name="setup-card" />
           <Stack.Screen name="role-reveal" options={{ gestureEnabled: false }} />
           <Stack.Screen name="game" options={{ gestureEnabled: false }} />
+          <Stack.Screen name="normal-summary" options={{ gestureEnabled: false }} />
           <Stack.Screen name="card-game" options={{ gestureEnabled: false }} />
         </Stack>
         </TopicStoreProvider>

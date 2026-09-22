@@ -9,7 +9,8 @@ export type GamePhase =
   | "voting"
   | "voteResult"
   | "night"
-  | "gameOver";
+  | "gameOver"
+  | "sessionSummary";
 
 export interface Player {
   id: number;
@@ -25,7 +26,14 @@ export interface EpisodeTopic {
   topic: string;
 }
 
+export interface NormalSession {
+  completedRounds: number;
+  /** プレイヤーID（同名でも別人）を添字とする累計の負けポイント。 */
+  lossPoints: number[];
+}
+
 export interface GameState {
+  session: NormalSession;
   rulesVersion: 2;
   accusedPlayerId: number | null;
   players: Player[];

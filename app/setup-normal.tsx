@@ -11,7 +11,7 @@ import { SketchFrame } from "@/components/sketch/SketchFrame";
 import { SketchStepper } from "@/components/sketch/SketchStepper";
 import { useTopicStore } from "@/game/TopicStore";
 import { episodeThemes, CUSTOM_THEME, SHUFFLE_THEME } from "@/game/episodeThemes";
-import { saveGameState, saveNormalSetup, loadNormalSetup } from "@/game/storage";
+import { saveGameState, saveNormalSetup, loadNormalSetup, loadGameState } from "@/game/storage";
 import { createNormalGame } from "@/game/gameLogic";
 import { colors, space, type } from "@/theme/tokens";
 
@@ -20,6 +20,7 @@ const MIN_PLAYERS = 3;
 
 export default function Setup() {
   const router = useRouter();
+  const [loadingError, setLoadingError] = useState(false);
   const store = useTopicStore();
   // 「プレイヤー」は参加者の総数。人狼はその内数（村人 = プレイヤー - 人狼）。
   const [playerCount, setPlayerCount] = useState(5);
@@ -34,13 +35,20 @@ export default function Setup() {
 
   useEffect(() => {
     (async () => {
-      const saved = await loadNormalSetup();
-      if (saved) {
-        setPlayerCount(saved.playerCount);
-        setSelectedTheme(saved.selectedTheme === CUSTOM_THEME ? episodeThemes[0].category : saved.selectedTheme);
-        setNames(saved.names);
-      }
-      setReady(true);
+      try {
+        const ongoing = await loadGameState();
+        if (ongoing) {
+          router.replace(ongoing.currentPhase === "sessionSummary" ? "/normal-summary" : ongoing.currentPhase === "roleReveal" ? "/role-reveal" : "/game");
+          return;
+        }
+        const saved = await loadNormalSetup();
+        if (saved) {
+          setPlayerCount(saved.playerCount);
+          setSelectedTheme(saved.selectedTheme === CUSTOM_THEME ? episodeThemes[0].category : saved.selectedTheme);
+          setNames(saved.names);
+        }
+        setReady(true);
+      } catch { setLoadingError(true); }
     })();
   }, []);
 
@@ -61,6 +69,11 @@ export default function Setup() {
     savingRef.current = true;
     setSaving(true);
     try {
+      const ongoing = await loadGameState();
+      if (ongoing) {
+        router.replace(ongoing.currentPhase === "sessionSummary" ? "/normal-summary" : ongoing.currentPhase === "roleReveal" ? "/role-reveal" : "/game");
+        return;
+      }
       const theme = selectedTheme === SHUFFLE_THEME || store.availableCategories.includes(selectedTheme) ? selectedTheme : episodeThemes[0].category;
       await saveNormalSetup({ playerCount, werewolfCount: 1, selectedTheme: theme, names });
       const state = createNormalGame({
@@ -77,12 +90,15 @@ export default function Setup() {
     }
   };
 
-  if (!ready) return <Screen>{null}</Screen>;
+  if (!ready) return <Screen>{loadingError && <View style={{ padding: space.xl, gap: space.lg }}>
+    <Text style={{ ...type.body, color: colors.ink }}>保存したゲームを読み込めませんでした。</Text>
+    <SketchButton label="ホームへ" onPress={() => router.replace("/mode-select")} />
+  </View>}</Screen>;
 
   return (
     <Screen scroll={false} edges={{ top: true, bottom: true }} avoidKeyboard>
       <View style={styles.menu}>
-        <GameMenu mode="normal" />
+        <GameMenu mode="normal" disabled={saving} />
       </View>
 
       <ScrollView
@@ -102,7 +118,7 @@ export default function Setup() {
             max={MAX_PLAYERS}
             onChange={updatePlayers}
           />
-          <Text style={styles.ruleNote}>人狼は1人。1回の投票で決着。{"\n"}次のゲームも全員で参加できます。</Text>
+          <Text style={styles.ruleNote}>人狼は1人。1回の投票で決着。{"\n"}負けるたびグラスが1杯。少ない人ほど上位。</Text>
         </SketchFrame>
 
         <SketchFrame style={styles.section} contentStyle={styles.group}>

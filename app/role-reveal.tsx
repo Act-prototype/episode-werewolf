@@ -84,7 +84,7 @@ export default function RoleReveal() {
   return (
     <Screen scroll={false}>
       <View style={styles.menu}>
-        <GameMenu mode="normal" showRules={false} />
+        <GameMenu mode="normal" showRules={false} disabled={saving} />
       </View>
 
       <View style={styles.body}>

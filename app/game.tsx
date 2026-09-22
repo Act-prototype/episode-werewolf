@@ -13,14 +13,15 @@ import { SketchFrame } from "@/components/sketch/SketchFrame";
 import { SketchQuote } from "@/components/sketch/SketchQuote";
 import { ThemeFrame } from "@/components/sketch/ThemeFrame";
 import { SketchOptionRow } from "@/components/sketch/SketchOptionRow";
+import { LossGlasses } from "@/components/LossGlasses";
 import { GameThemeControls } from "@/components/GameThemeControls";
 import { useTopicStore } from "@/game/TopicStore";
 import { haptics } from "@/components/haptics";
 import { GameState, Player } from "@/game/types";
-import { createNormalGame, resolveNormalRound } from "@/game/gameLogic";
+import { replayNormalGame, resolveNormalRound, finishNormalSession } from "@/game/gameLogic";
 import { getTopicForTheme, CUSTOM_THEME } from "@/game/episodeThemes";
 import { discussionQuote, episodeQuote } from "@/game/quotes";
-import { loadGameState, saveGameState, clearGameState } from "@/game/storage";
+import { loadGameState, saveGameState } from "@/game/storage";
 import { sketch } from "@/theme/sketchAssets";
 import { colors, space, type } from "@/theme/tokens";
 
@@ -30,6 +31,7 @@ const MAX_DISCUSSION_SECONDS = 30 * 60;
 
 export default function Game() {
   const router = useRouter();
+  const [loadingError, setLoadingError] = useState(false);
   const { ready: libraryReady, availableCategories } = useTopicStore();
   const [state, setState] = useState<GameState | null>(null);
   const [vote, setVote] = useState<number | "tie" | null>(null);
@@ -41,18 +43,21 @@ export default function Game() {
   useEffect(() => {
     if (!libraryReady) return;
     (async () => {
-      const saved = await loadGameState();
-      if (!saved) return router.replace("/mode-select");
-      if (saved.currentPhase === "roleReveal") return router.replace("/role-reveal");
-      if (saved.currentPhase === "episodeAnnouncement") {
-        const isAvailable = availableCategories.includes(saved.currentTopic?.category ?? "") || saved.currentTopic?.category === CUSTOM_THEME;
-        if (!saved.currentTopic || !isAvailable) {
-          saved.currentTopic = getTopicForTheme(saved.selectedTheme, availableCategories, saved.customTopic);
-          await saveGameState(saved);
+      try {
+        const saved = await loadGameState();
+        if (!saved) return router.replace("/mode-select");
+        if (saved.currentPhase === "sessionSummary") return router.replace("/normal-summary");
+        if (saved.currentPhase === "roleReveal") return router.replace("/role-reveal");
+        if (saved.currentPhase === "episodeAnnouncement") {
+          const isAvailable = availableCategories.includes(saved.currentTopic?.category ?? "") || saved.currentTopic?.category === CUSTOM_THEME;
+          if (!saved.currentTopic || !isAvailable) {
+            saved.currentTopic = getTopicForTheme(saved.selectedTheme, availableCategories, saved.customTopic);
+            await saveGameState(saved);
+          }
         }
-      }
-      if (saved.currentPhase === "discussion") setTimerOn(true);
-      setState(saved);
+        if (saved.currentPhase === "discussion") setTimerOn(true);
+        setState(saved);
+      } catch { setLoadingError(true); }
     })();
   }, [libraryReady]);
 
@@ -70,7 +75,7 @@ export default function Game() {
     return () => clearInterval(id);
   }, [timerOn, state?.currentPhase]);
 
-  const persist = async (next: GameState, destination?: "/role-reveal" | "/setup-normal") => {
+  const persist = async (next: GameState, destination?: "/role-reveal" | "/normal-summary") => {
     if (savingRef.current) return;
     savingRef.current = true;
     setSaving(true);
@@ -94,7 +99,10 @@ export default function Game() {
     }
   };
 
-  if (!state) return <Screen>{null}</Screen>;
+  if (!state) return <Screen>{loadingError && <View style={{ padding: space.xl, gap: space.lg }}>
+    <Text style={{ ...type.body, color: colors.ink }}>保存したゲームを読み込めませんでした。</Text>
+    <SketchButton label="ホームへ" onPress={() => router.replace("/mode-select")} />
+  </View>}</Screen>;
 
   const transition = () => {
     if (savingRef.current) return;
@@ -121,24 +129,11 @@ export default function Game() {
     void persist({ ...state, currentTopic: getTopicForTheme(state.selectedTheme, availableCategories, state.customTopic) });
 
   const replay = () => {
-    const next = createNormalGame({ playerNames: state.players.map((player) => player.name), selectedTheme: state.selectedTheme, customTopic: state.customTopic });
+    const next = replayNormalGame(state);
     void persist(next, "/role-reveal");
   };
 
-  const changeSetup = async () => {
-    if (savingRef.current) return;
-    savingRef.current = true;
-    setSaving(true);
-    try {
-      await clearGameState();
-      router.replace("/setup-normal");
-    } catch {
-      Alert.alert("保存できませんでした", "もう一度お試しください。");
-    } finally {
-      savingRef.current = false;
-      setSaving(false);
-    }
-  };
+  const showSummary = () => void persist(finishNormalSession(state), "/normal-summary");
 
   const topic = state.currentTopic;
   const accused = state.players.find((player) => player.id === state.accusedPlayerId);
@@ -150,7 +145,7 @@ export default function Game() {
 
   return (
     <Screen scroll={false} edges={{ top: false, bottom: true }} avoidKeyboard>
-      <GameHeader />
+      <GameHeader disabled={saving} />
 
       <ScrollView
         contentContainerStyle={styles.content}
@@ -265,16 +260,17 @@ export default function Game() {
 
             {/* 勝者は上下の手書きアーチで囲う */}
             <SketchFrame style={styles.fullWidth} contentStyle={styles.winnerFrameInner}>
-              <ResultGrid players={winners} />
+              <ResultGrid players={winners} points={state.session.lossPoints} />
             </SketchFrame>
 
             <Image source={sketch.resultMakeinu} style={styles.makeinuArt} resizeMode="contain" />
-            <ResultGrid players={losers} />
+            <ResultGrid players={losers} points={state.session.lossPoints} lost />
 
+            <Text style={styles.phaseLead}>負けた人にグラスを1杯追加。少ない人ほど上位です。</Text>
             <Text style={styles.phaseLead}>うそだったのは、どんなところ？{"\n"}みんなで答え合わせしよう。</Text>
             <SketchButton label="同じメンバーでもう1回" onPress={replay} disabled={saving} style={styles.cta} />
-            <PressableScale accessibilityRole="button" accessibilityLabel="設定を変える" onPress={changeSetup} disabled={saving}>
-              <Text style={styles.phaseLead}>設定を変える</Text>
+            <PressableScale accessibilityRole="button" accessibilityLabel="終了して全体集計を見る" onPress={showSummary} disabled={saving}>
+              <Text style={styles.phaseLead}>終了して全体集計を見る</Text>
             </PressableScale>
           </Animated.View>
         )}
@@ -289,7 +285,7 @@ export default function Game() {
  * イラストは役職ごとに縦横比が違う（チワワ0.69・ポメ0.99）ので、枠の寸法は
  * 揃えたうえで fill（contain）で内側に収める。横長の絵ほど小さく収まる。
  */
-function ResultGrid({ players }: { players: Player[] }) {
+function ResultGrid({ players, points, lost = false }: { players: Player[]; points: number[]; lost?: boolean }) {
   return (
     <View style={styles.resultGrid}>
       {players.map((p) => (
@@ -300,6 +296,7 @@ function ResultGrid({ players }: { players: Player[] }) {
           <Text style={styles.resultCardName} numberOfLines={1}>
             {p.name}
           </Text>
+          <LossGlasses points={points[p.id]} added={lost} />
         </View>
       ))}
     </View>

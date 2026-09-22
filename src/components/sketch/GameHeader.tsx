@@ -7,6 +7,7 @@ import { colors, space, type } from "@/theme/tokens";
 interface Props {
   /** 何日目か。省略すると日付を出さずメニューだけになる（勝敗発表など日付が意味を持たない画面） */
   day?: number;
+  disabled?: boolean;
   mode?: "normal" | "card";
 }
 
@@ -14,7 +15,7 @@ interface Props {
  * ゲーム進行画面の共通ヘッダー。
  * 左に日の出＋「N日目」、右にメニュー。塗りも罫線も持たず紙の上に直接置く。
  */
-export function GameHeader({ day, mode = "normal" }: Props) {
+export function GameHeader({ day, mode = "normal", disabled }: Props) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -28,7 +29,7 @@ export function GameHeader({ day, mode = "normal" }: Props) {
           </>
         )}
       </View>
-      <GameMenu mode={mode} />
+      <GameMenu mode={mode} disabled={disabled} />
     </View>
   );
 }
